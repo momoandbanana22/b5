@@ -1,4 +1,4 @@
-VERSION = "Version 1.4.1"
+VERSION = "Version 1.4.2"
 puts( "BitBank BaiBai Bot (b5) " + VERSION)
 
 require 'pp'
@@ -372,7 +372,7 @@ class OnePairBaiBai
 			if @myBuyOrderWaitCount>@buyOrderWaitMaxRetry then 
 				@currentStatus.setCurrentStatus(StatusValues::CANSEL_BUYORDER)
 				dispStr = dispStr + " " + "失敗:リトライアウト" + "\r\n"
-				puts(dispStr) if iDisp
+				puts(dispStr) if (iDisp && iWaitOrdeDisp)
 				return
 			end
 			@myBuyOrderWaitCount = @myBuyOrderWaitCount + 1
