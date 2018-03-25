@@ -1,4 +1,4 @@
-VERSION = "Version 1.4.2"
+VERSION = "Version 1.4.3"
 puts( "BitBank BaiBai Bot (b5) " + VERSION)
 
 require 'pp'
@@ -67,6 +67,7 @@ class OnePairBaiBai
 		ORDER_SELL		= 9	 # 発注(販売)
 		WAIT_SELL		= 10 # 販売約定待ち
 		CANSEL_BUYORDER = 11 # 購入注文中断
+		DISP_PROFITS	= 12 # 利益表示
 	end
 	class Status
 		@@STATUS_NAMES = {
@@ -82,6 +83,7 @@ class OnePairBaiBai
 			StatusValues::ORDER_SELL		=> "発注(販売)" ,
 			StatusValues::WAIT_SELL			=> "販売約定待ち" ,
 			StatusValues::CANSEL_BUYORDER	=> "購入注文中断" ,
+			StatusValues::DISP_PROFITS		=> "利益表示" ,
 		}
 		def initialize()
 			@currentStatus = StatusValues::INITSTATUS
@@ -109,6 +111,8 @@ class OnePairBaiBai
 			when StatusValues::ORDER_SELL			# 発注(販売)
 				@currentStatus=StatusValues::WAIT_SELL
 			when StatusValues::WAIT_SELL			# 販売約定待ち
+				@currentStatus=StatusValues::DISP_PROFITS
+			when StatusValues::DISP_PROFITS			# 利益表示
 				@currentStatus=StatusValues::GET_MYAMOUT
 			when StatusValues::CANSEL_BUYORDER		# 購入注文中断
 				@currentStatus=StatusValues::GET_MYAMOUT
@@ -147,6 +151,8 @@ class OnePairBaiBai
 		# 最大購入待ち回数
 		@buyOrderWaitMaxRetry = 10
 
+		# 合計利益
+		@totalProfits = 0
 	end
 
 	# このインスタンスのターゲットペア名を返す
@@ -182,6 +188,8 @@ class OnePairBaiBai
 			orderSell(iDisp)
 		when StatusValues::WAIT_SELL			# 販売約定待ち
 			waitOrder(iDisp,iWaitOrderDisp,@mySellOrderInfo)
+		when StatusValues::DISP_PROFITS			# 利益表示
+			dispProfits(iDisp)
 		when StatusValues::CANSEL_BUYORDER		# 購入注文中断
 			cancelOrder(iDisp,@myBuyOrderInfo)
 		else
@@ -535,6 +543,28 @@ class OnePairBaiBai
 		return
 	end
 
+	###########
+	# 利益表示
+	###########
+	def dispProfits(iDisp)
+		print( DateTime.now ) if iDisp # 現在日時表示
+		print(" " + @targetPair) if iDisp # ペア名表示
+		print(" " + "利益表示") if iDisp
+
+		currentProfits = @mySellOrderInfo["price"].to_f * @mySellOrderInfo["start_amount"].to_f - @myBuyOrderInfo["price"].to_f * @myBuyOrderInfo["start_amount"].to_f
+		@totalProfits = @totalProfits + currentProfits
+
+		print(" " + "今回売買:" + currentProfits.to_s) if iDisp
+		print(" " + "###合計利益:" + @totalProfits.to_s) if iDisp
+
+		# 単位通貨名表示
+		unitName = @targetPair.split("_")[1] # @targetPairを_で区切った配列のindex1(２番め)、つまり後側
+		puts(" " + unitName.to_s + "\r\n") if iDisp
+
+		#正常終了したので、次の状態へ
+		@currentStatus.next()
+		return
+	end
 end
 
 configAPIKEY = YAML.load_file("apikey.yaml")
