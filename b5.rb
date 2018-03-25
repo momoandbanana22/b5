@@ -1,4 +1,4 @@
-VERSION = "Version 1.4"
+VERSION = "Version 1.4.1"
 puts( "BitBank BaiBai Bot (b5) " + VERSION)
 
 require 'pp'
@@ -266,17 +266,17 @@ class OnePairBaiBai
 	# 購入価格を計算して決定する
 	#############################
 	def calcBuyPrice(iDisp)
-		print( DateTime.now ) if iDisp # 現在日時表示
-		print(" " + @targetPair) if iDisp # ペア名表示
-		print(" " + "購入価格計算") if iDisp
+		# print( DateTime.now ) if iDisp # 現在日時表示
+		# print(" " + @targetPair) if iDisp # ペア名表示
+		# print(" " + "購入価格計算") if iDisp
 
 		# 購入価格を、現在の板の購入価格にする
 		@targetBuyPrice = @coinPrice["buy"].to_f
-		print(" " + @targetBuyPrice.to_s) if iDisp
+		# print(" " + @targetBuyPrice.to_s) if iDisp
 
 		#正常終了したので、次の状態へ
 		@currentStatus.next()
-		puts(" 成功" + "\r\n") if iDisp
+		# puts(" 成功" + "\r\n") if iDisp
 		calcBuyAmount(iDisp)
 	end
 
@@ -284,9 +284,9 @@ class OnePairBaiBai
 	# 購入数量を計算して決定する
 	#############################
 	def calcBuyAmount(iDisp)
-		print( DateTime.now ) if iDisp # 現在日時表示
-		print(" " + @targetPair) if iDisp # ペア名表示
-		print(" " + "購入数量計算") if iDisp
+		# print( DateTime.now ) if iDisp # 現在日時表示
+		# print(" " + @targetPair) if iDisp # ペア名表示
+		# print(" " + "購入数量計算") if iDisp
 
 		# 購入数量を、現在の残高から計算する
 		case @targetPair
@@ -309,11 +309,11 @@ class OnePairBaiBai
 		else
 			@targetBuyAmount = 0 # 買わない
 		end
-		print(" " + @targetBuyAmount.to_s) if iDisp
+		# print(" " + @targetBuyAmount.to_s) if iDisp
 
 		#正常終了したので、次の状態へ
 		@currentStatus.next()
-		puts(" 成功" + "\r\n") if iDisp
+		# puts(" 成功" + "\r\n") if iDisp
 		orderBuy(iDisp)
 	end
 
@@ -355,7 +355,7 @@ class OnePairBaiBai
 
 		#正常終了したので、次の状態へ
 		@currentStatus.next()
-		puts(" 成功" + "\r\n") if iDisp
+		puts(" 成功 数量:" + @targetBuyAmount.to_s + " 金額:" + @targetBuyPrice.to_s + "\r\n") if iDisp
 	end
 
 	########################################
@@ -426,17 +426,17 @@ class OnePairBaiBai
 	# 販売価格を計算して決定する
 	#############################
 	def calcSellPrice(iDisp)
-		print( DateTime.now ) if iDisp # 現在日時表示
-		print(" " + @targetPair) if iDisp # ペア名表示
-		print(" " + "販売価格計算") if iDisp
+		# print( DateTime.now ) if iDisp # 現在日時表示
+		# print(" " + @targetPair) if iDisp # ペア名表示
+		# print(" " + "販売価格計算") if iDisp
 
 		# 販売価格を、購入価格の1.001倍にする
 		@targetSellPrice = @targetBuyPrice.to_f * 1.001
-		print(" " + @targetSellPrice.to_s) if iDisp
+		# print(" " + @targetSellPrice.to_s) if iDisp
 
 		#正常終了したので、次の状態へ
 		@currentStatus.next()
-		puts(" 成功" + "\r\n") if iDisp
+		# puts(" 成功" + "\r\n") if iDisp
 		calcSellAmount(iDisp)
 	end
 
@@ -444,17 +444,17 @@ class OnePairBaiBai
 	# 販売数量を計算して決定する
 	#############################
 	def calcSellAmount(iDisp)
-		print( DateTime.now ) if iDisp # 現在日時表示
-		print(" " + @targetPair) if iDisp # ペア名表示
-		print(" " + "販売数量計算") if iDisp
+		# print( DateTime.now ) if iDisp # 現在日時表示
+		# print(" " + @targetPair) if iDisp # ペア名表示
+		# print(" " + "販売数量計算") if iDisp
 
 		# 販売数量を、購入数量と同じにする。（買った分を売る）
 		@targetSellAmount = @targetBuyAmount
-		print(" " + @targetSellAmount.to_s) if iDisp
+		# print(" " + @targetSellAmount.to_s) if iDisp
 
 		#正常終了したので、次の状態へ
 		@currentStatus.next()
-		puts(" 成功" + "\r\n") if iDisp
+		# puts(" 成功" + "\r\n") if iDisp
 		orderSell(iDisp)
 	end
 
@@ -496,7 +496,7 @@ class OnePairBaiBai
 
 		#正常終了したので、次の状態へ
 		@currentStatus.next()
-		puts(" 成功" + "\r\n") if iDisp
+		puts(" 成功 数量:" + @targetSellAmount.to_s + " 金額:" + @targetSellPrice.to_s + "\r\n") if iDisp
 	end
 
 	#################
