@@ -1,4 +1,4 @@
-VERSION = "Version 1.4.3"
+VERSION = "Version 1.4.4"
 puts( "BitBank BaiBai Bot (b5) " + VERSION)
 
 require 'pp'
@@ -53,6 +53,9 @@ end
 class OnePairBaiBai
 	# BitBank.cc で取り扱っているコインペアの一覧
 	BBCC_COIN_PAIR_NAMES = ["btc_jpy", "xrp_jpy", "ltc_btc", "eth_btc", "mona_jpy", "mona_btc", "bcc_jpy", "bcc_btc"]
+
+	# 全体の利益
+	@@totalProfits = { "btc" => 0, "jpy" => 0 }
 
 	module StatusValues
 		INITSTATUS		= 0	 # 初期状態
@@ -151,8 +154,6 @@ class OnePairBaiBai
 		# 最大購入待ち回数
 		@buyOrderWaitMaxRetry = 10
 
-		# 合計利益
-		@totalProfits = 0
 	end
 
 	# このインスタンスのターゲットペア名を返す
@@ -551,19 +552,30 @@ class OnePairBaiBai
 		print(" " + @targetPair) if iDisp # ペア名表示
 		print(" " + "利益表示") if iDisp
 
-		currentProfits = @mySellOrderInfo["price"].to_f * @mySellOrderInfo["start_amount"].to_f - @myBuyOrderInfo["price"].to_f * @myBuyOrderInfo["start_amount"].to_f
-		@totalProfits = @totalProfits + currentProfits
-
-		print(" " + "今回売買:" + currentProfits.to_s) if iDisp
-		print(" " + "###合計利益:" + @totalProfits.to_s) if iDisp
-
-		# 単位通貨名表示
+		# 単位通貨名
 		unitName = @targetPair.split("_")[1] # @targetPairを_で区切った配列のindex1(２番め)、つまり後側
-		puts(" " + unitName.to_s + "\r\n") if iDisp
+
+		# 今回の利益を計算
+		currentProfits = @mySellOrderInfo["price"].to_f * @mySellOrderInfo["start_amount"].to_f - @myBuyOrderInfo["price"].to_f * @myBuyOrderInfo["start_amount"].to_f
+
+		# 合計利益を計算
+		@@totalProfits[unitName] = @@totalProfits[unitName].to_f + currentProfits
+
+		# 表示
+		print(" " + "今回売買:" + currentProfits.to_s) if iDisp
+		print(" " + "###合計利益:" + @@totalProfits[unitName].to_s) if iDisp
+		print(" " + unitName.to_s + "\r\n") if iDisp
 
 		#正常終了したので、次の状態へ
 		@currentStatus.next()
 		return
+	end
+
+	###################################
+	# 全利益を返すスタティックメソッド
+	###################################
+	def self.getTotalProfits()
+		return @@totalProfits
 	end
 end
 
@@ -575,7 +587,7 @@ bbcc.initRandom()
 baibais = [] # 空の配列を作成
 
 #for pairName in OnePairBaiBai::BBCC_COIN_PAIR_NAMES do
-for pairName in ["btc_jpy", "btc_jpy", "btc_jpy", "ltc_btc", "eth_btc", "mona_jpy", "mona_btc"] do
+for pairName in ["btc_jpy", "btc_jpy", "btc_jpy", "btc_jpy", "btc_jpy"] do
 #for pairName in ["btc_jpy"] do
 		baibais.push(OnePairBaiBai.new(pairName,bbcc))
 end
@@ -624,7 +636,9 @@ loop do
 			runningmode = true
 		when "add btc_jpy"
 			baibais.push(OnePairBaiBai.new("btc_jpy",bbcc))
-			puts("追加しました。")			
+			puts("追加しました。")
+		when "dispallprofits"
+			pp OnePairBaiBai.getTotalProfits()			
 		else
 			begin
 				eval(inputcommand)
