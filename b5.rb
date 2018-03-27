@@ -1,4 +1,4 @@
-VERSION = "Version 1.4.4"
+VERSION = "Version 1.4.5"
 puts( "BitBank BaiBai Bot (b5) " + VERSION)
 
 require 'pp'
@@ -56,6 +56,32 @@ class OnePairBaiBai
 
 	# 全体の利益
 	@@totalProfits = { "btc" => 0, "jpy" => 0 }
+
+	# 一度に購入する最大金額
+	@@amountJPYtoPurchaseAtOneTime = 10000.0 # 一万円分
+	def self.amountJPYtoPurchaseAtOneTime
+		@@amountJPYtoPurchaseAtOneTime
+	  end
+	def self.amountJPYtoPurchaseAtOneTime=(newValue)
+		@@amountJPYtoPurchaseAtOneTime = newValue
+	end
+
+	@@amountBTCtoPurchaseAtOneTime = 0.01 # 1BTC=100万円として、一万円分
+	def self.amountBTCtoPurchaseAtOneTime
+		@@amountBTCtoPurchaseAtOneTime
+	  end
+	def self.amountBTCtoPurchaseAtOneTime=(newValue)
+		@@amountBTCtoPurchaseAtOneTime = newValue
+	end
+
+	# 販売する価格を、購入価格の何倍にするか？
+	@@magnification = 1.0005 # 10000円で買って10005円で売る。5円の利益。
+	def self.magnification
+		@@magnification
+	end
+	def self.magnification=(newValue)
+		@@magnification = newValue
+	end
 
 	module StatusValues
 		INITSTATUS		= 0	 # 初期状態
@@ -297,28 +323,25 @@ class OnePairBaiBai
 		# print(" " + @targetPair) if iDisp # ペア名表示
 		# print(" " + "購入数量計算") if iDisp
 
-		# 購入数量を、現在の残高から計算する
+		# 購入可能金額
 		case @targetPair
-		when "btc_jpy"
-			@targetBuyAmount = 0.010 # 一万円くらい
-		when "xrp_jpy"
-			@targetBuyAmount = 200 # 一万円くらい
-		when "ltc_btc"
-			@targetBuyAmount = 0.5555 # 一万円くらい
-		when "eth_btc"
-			@targetBuyAmount = 0.1666 # 一万円くらい
-		when "mona_jpy"
-			@targetBuyAmount = 25.5555 # 一万円くらい
-		when "mona_btc"
-			@targetBuyAmount = 25.5555 # 一万円くらい
-		when "bcc_jpy"
-			@targetBuyAmount = 0.0999 # 一万円くらい
-		when "bcc_btc"
-			@targetBuyAmount = 0.0999 # 一万円くらい
+		when "btc_jpy","xrp_jpy","mona_jpy","bcc_jpy"
+			freeamount = @amount['jpy']['free_amount'].to_f
+			tukau = @@amountJPYtoPurchaseAtOneTime.to_f
+		when "ltc_btc","eth_btc","mona_btc","bcc_btc"
+			freeamount = @amount['btc']['free_amount'].to_f
+			tukau = @@amountBTCtoPurchaseAtOneTime.to_f
 		else
-			@targetBuyAmount = 0 # 買わない
+			freeamount = 0.0 # 買わない
+			tukau = 0.0 # 買わない
 		end
-		# print(" " + @targetBuyAmount.to_s) if iDisp
+		# 使用予定金額が手持金を超えていたら、手持ち金を使用予定金額を使う。
+		if tukau>freeamount then
+			tukau = freeamount
+		end
+
+		# 購入数量＝単位購入金額(JPY)÷購入予定価格(BTC)で計算する。
+		@targetBuyAmount = tukau.to_f / @targetBuyPrice.to_f # 一万円分
 
 		#正常終了したので、次の状態へ
 		@currentStatus.next()
@@ -440,7 +463,7 @@ class OnePairBaiBai
 		# print(" " + "販売価格計算") if iDisp
 
 		# 販売価格を、購入価格の1.001倍にする
-		@targetSellPrice = @targetBuyPrice.to_f * 1.001
+		@targetSellPrice = @targetBuyPrice.to_f * @@magnification
 		# print(" " + @targetSellPrice.to_s) if iDisp
 
 		#正常終了したので、次の状態へ
