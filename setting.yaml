@@ -1,0 +1,11 @@
+amountJPYtoPurchaseAtOneTime: 10000.0
+# ↑xxx_jpyペアでxxxをJPYで買う時、一度に購入する最大金額(JPY)
+
+amountBTCtoPurchaseAtOneTime: 0.01
+# ↑xxx_btcペアでxxxをJPYで買う時、一度に購入する最大金額(BTC)
+
+magnification: 1.0005
+# ↑販売する価格を、購入価格の何倍にするか？
+
+buyOrderWaitMaxRetry: 10
+# ↑最大購入待ち回数

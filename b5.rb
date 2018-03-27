@@ -1,4 +1,4 @@
-VERSION = "Version 1.4.5"
+VERSION = "Version 1.4.6"
 puts( "BitBank BaiBai Bot (b5) " + VERSION)
 
 require 'pp'
@@ -180,6 +180,16 @@ class OnePairBaiBai
 		# 最大購入待ち回数
 		@buyOrderWaitMaxRetry = 10
 
+		# 設定ファイル読み込み
+		readSetting()
+	end
+
+	def readSetting
+		setting = YAML.load_file("setting.yaml")
+		@@amountJPYtoPurchaseAtOneTime	= setting["amountJPYtoPurchaseAtOneTime"].to_f
+		@@amountBTCtoPurchaseAtOneTime	= setting["amountBTCtoPurchaseAtOneTime"].to_f
+		@@magnification					= setting["magnification"].to_f
+		@buyOrderWaitMaxRetry			= setting["buyOrderWaitMaxRetry"].to_i
 	end
 
 	# このインスタンスのターゲットペア名を返す
