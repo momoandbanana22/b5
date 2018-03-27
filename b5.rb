@@ -1,4 +1,4 @@
-VERSION = "Version 1.4.6"
+VERSION = "Version 1.4.7"
 puts( "BitBank BaiBai Bot (b5) " + VERSION)
 
 require 'pp'
@@ -445,6 +445,14 @@ class OnePairBaiBai
 						@currentStatus.next()
 						dispStr = dispStr + " " + "成功 約定した。" + "\r\n" # puts(" 成功。約定した。" + "\r\n") if iDisp
 						puts(dispStr) if iDisp
+						return
+					end
+					if oneOrderInfoGet["status"] == "PARTIALLY_FILLED" then
+						# 一部約定してしまったので、キャンセルしないように、リトライカウンタをリセット
+						@myBuyOrderWaitCount = 0
+						# まだ注文が約定していない
+						dispStr = dispStr + " " + "成功" + "\r\n" # puts(" 成功" + "\r\n") if iDisp
+						puts(dispStr) if (iDisp && iWaitOrdeDisp)
 						return
 					end
 				end
