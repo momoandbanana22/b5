@@ -356,9 +356,9 @@ class OnePairBaiBai
 			tukau = 0.0 # 買わない
 		end
 		# 使用予定金額が手持金を超えていたら、手持ち金を使用予定金額を使う。
-		if tukau>freeamount then
-			tukau = freeamount
-		end
+		#if tukau>freeamount then
+		#	tukau = freeamount
+		#end
 
 		# 購入数量＝単位購入金額(JPY)÷購入予定価格(BTC)で計算する。
 		@targetBuyAmount = tukau.to_f / @targetBuyPrice.to_f # 一万円分
