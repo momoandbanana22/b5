@@ -5,6 +5,7 @@ require 'pp'
 require 'date'
 require 'io/console'
 require 'yaml'
+require 'slack/incoming/webhooks'
 
 require 'ruby_bitbankcc'
 
@@ -14,7 +15,7 @@ class Bitbankcc
 		@random = Random.new
 	end
 	def randomWait()
-		st=1.0
+		st=0.5
 		ed=3.0
 		sleep(@random.rand(ed-st)+st) #2〜5秒待つ
 	end
@@ -190,6 +191,10 @@ class OnePairBaiBai
 		@@amountBTCtoPurchaseAtOneTime	= setting["amountBTCtoPurchaseAtOneTime"].to_f
 		@@magnification					= setting["magnification"].to_f
 		@buyOrderWaitMaxRetry			= setting["buyOrderWaitMaxRetry"].to_i
+		@@slackUse = setting["slack"]["use"]
+		if @@slackUse then
+			@@slack = Slack::Incoming::Webhooks.new setting["slack"]["webhookURL"]
+		end
 	end
 
 	# このインスタンスのターゲットペア名を返す
@@ -317,6 +322,11 @@ class OnePairBaiBai
 
 		# 購入価格を、現在の板の購入価格にする
 		@targetBuyPrice = @coinPrice["buy"].to_f
+		if ((Time.now.to_f * 1000).to_i % 10 >4) then
+			@targetBuyPrice = @targetBuyPrice * 1.001
+		else
+			@targetBuyPrice = @targetBuyPrice / 1.001
+		end
 		# print(" " + @targetBuyPrice.to_s) if iDisp
 
 		#正常終了したので、次の状態へ
@@ -603,9 +613,13 @@ class OnePairBaiBai
 		@@totalProfits[unitName] = @@totalProfits[unitName].to_f + currentProfits
 
 		# 表示
-		print(" " + "今回売買:" + currentProfits.to_s) if iDisp
-		print(" " + "###合計利益:" + @@totalProfits[unitName].to_s) if iDisp
-		print(" " + unitName.to_s + "\r\n") if iDisp
+		dispStr = "今回売買:" + currentProfits.to_s + " ###合計利益:" + @@totalProfits[unitName].to_s + " " + unitName.to_s
+		print(" " + dispStr + "\r\n") if iDisp
+
+		# slack 通知
+		if @@slackUse then
+			@@slack.post dispStr
+		end
 
 		#正常終了したので、次の状態へ
 		@currentStatus.next()
@@ -628,7 +642,7 @@ bbcc.initRandom()
 baibais = [] # 空の配列を作成
 
 #for pairName in OnePairBaiBai::BBCC_COIN_PAIR_NAMES do
-for pairName in ["btc_jpy", "btc_jpy", "btc_jpy", "btc_jpy", "btc_jpy"] do
+for pairName in ["btc_jpy", "btc_jpy", "btc_jpy", "btc_jpy", "btc_jpy", "btc_jpy", "btc_jpy", "btc_jpy", "btc_jpy", "btc_jpy"] do
 #for pairName in ["btc_jpy"] do
 		baibais.push(OnePairBaiBai.new(pairName,bbcc))
 end

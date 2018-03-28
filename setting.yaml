@@ -7,5 +7,12 @@ amountBTCtoPurchaseAtOneTime: 0.01
 magnification: 1.0005
 # ↑販売する価格を、購入価格の何倍にするか？
 
-buyOrderWaitMaxRetry: 10
+buyOrderWaitMaxRetry: 3
 # ↑最大購入待ち回数
+
+# ↓slackに関する設定
+slack:
+  use: false
+# ↑slack通知を使うかどうか true/false
+  webhookURL: "https://hooks.slack.com/services/XXXXXXXXX/XXXXXXXXX/XXXXXXXXXXXXXXXXXXXXXXXX"
+# ↑slackの通知のWebhook URL
