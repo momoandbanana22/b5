@@ -625,7 +625,7 @@ class OnePairBaiBai
 		print(" " + dispStr + "\r\n") if iDisp
 
 		# slack 通知
-		slackPost( dispStr )
+		OnePairBaiBai.slackPost( dispStr )
 
 		#正常終了したので、次の状態へ
 		@currentStatus.next()
@@ -651,7 +651,7 @@ targetbaibailist = setting["targetBaiBailist"]
 # 売買を行うものを配列baibaisに格納
 baibais = [] # 空の配列を作成
 for pairName in targetbaibailist do
-		baibais.push(OnePairBaiBai.new(pairName,bbcc))
+	baibais.push(OnePairBaiBai.new(pairName,bbcc))
 end
 
 OnePairBaiBai.slackPost (PROGRAMNAME + VERSION)
