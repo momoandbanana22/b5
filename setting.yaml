@@ -16,3 +16,6 @@ slack:
 # ↑slack通知を使うかどうか true/false
   webhookURL: "https://hooks.slack.com/services/XXXXXXXXX/XXXXXXXXX/XXXXXXXXXXXXXXXXXXXXXXXX"
 # ↑slackの通知のWebhook URL
+
+targetBaiBailist: ["btc_jpy", "btc_jpy", "btc_jpy", "btc_jpy", "btc_jpy"]
+# ↑売買を行う通貨ペアを指定する

@@ -1,5 +1,6 @@
-VERSION = "Version 1.4.7"
-puts( "BitBank BaiBai Bot (b5) " + VERSION)
+VERSION = "Version 1.4.8"
+PROGRAMNAME = "BitBank BaiBai Bot (b5) "
+puts( PROGRAMNAME + VERSION )
 
 require 'pp'
 require 'date'
@@ -194,6 +195,13 @@ class OnePairBaiBai
 		@@slackUse = setting["slack"]["use"]
 		if @@slackUse then
 			@@slack = Slack::Incoming::Webhooks.new setting["slack"]["webhookURL"]
+		end
+	end
+
+	# slack通知を送信する
+	def self.slackPost(iMsg)
+		if @@slackUse then
+			@@slack.post iMsg
 		end
 	end
 
@@ -617,9 +625,7 @@ class OnePairBaiBai
 		print(" " + dispStr + "\r\n") if iDisp
 
 		# slack 通知
-		if @@slackUse then
-			@@slack.post dispStr
-		end
+		slackPost( dispStr )
 
 		#正常終了したので、次の状態へ
 		@currentStatus.next()
@@ -638,14 +644,17 @@ configAPIKEY = YAML.load_file("apikey.yaml")
 bbcc = Bitbankcc.new(configAPIKEY["apikey"],configAPIKEY["seckey"])
 bbcc.initRandom()
 
+# 売買を行うものをファイルから読み込む
+setting = YAML.load_file("setting.yaml")
+targetbaibailist = setting["targetBaiBailist"]
+
 # 売買を行うものを配列baibaisに格納
 baibais = [] # 空の配列を作成
-
-#for pairName in OnePairBaiBai::BBCC_COIN_PAIR_NAMES do
-for pairName in ["btc_jpy", "btc_jpy", "btc_jpy", "btc_jpy", "btc_jpy", "btc_jpy", "btc_jpy", "btc_jpy", "btc_jpy", "btc_jpy"] do
-#for pairName in ["btc_jpy"] do
+for pairName in targetbaibailist do
 		baibais.push(OnePairBaiBai.new(pairName,bbcc))
 end
+
+OnePairBaiBai.slackPost (PROGRAMNAME + VERSION)
 
 baibaiDisp = true
 waitOrderDisp = false
