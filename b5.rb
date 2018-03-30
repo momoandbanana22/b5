@@ -1,4 +1,4 @@
-VERSION = "Version 1.4.11"
+VERSION = "Version 1.4.12"
 PROGRAMNAME = "BitBank BaiBai Bot (b5) "
 puts( PROGRAMNAME + VERSION )
 
@@ -259,18 +259,19 @@ class OnePairBaiBai
 		print(" " + self.object_id.to_s) # オブジェクトIDを表示
 		print(" " + @targetPair) if iDisp # ペア名表示
 		print(" " + "残高情報取得") if iDisp
+		@@log.debug(self.object_id,self.class.name,__method__,@targetPair)
 		@bbcc.randomWait()
 
 		begin
 			balance = JSON.parse(@bbcc.read_balance())
 			if balance["success"]!=1 then
 				errstr = "失敗:" + balance["data"]["code"].to_s
-				@@log.error(self.object_id,self.name,__method__,errstr)
+				@@log.error(self.object_id,self.class.name,__method__,errstr)
 				puts(" " + errstr + "\r\n") if iDisp
 				return
 			end
 		rescue => exception
-			@@log.fatal(self.object_id,self.name,__method__,exception.to_s)
+			@@log.fatal(self.object_id,self.class.name,__method__,exception.to_s)
 			puts(" 失敗:" + exception.to_s + "\r\n") if iDisp
 			return
 		end
@@ -304,18 +305,19 @@ class OnePairBaiBai
 		print(" " + self.object_id.to_s) # オブジェクトIDを表示
 		print(" " + @targetPair) if iDisp # ペア名表示
 		print(" " + "価格情報取得") if iDisp
+		@@log.debug(self.object_id,self.class.name,__method__,@targetPair)
 		@bbcc.randomWait()
 
 		begin
 			oneCoinPrice = JSON.parse(@bbcc.read_ticker(@targetPair))
 			if oneCoinPrice["success"]!=1 then
 				errstr = "失敗:" + oneCoinPrice["data"]["code"].to_s
-				@@log.error(self.object_id,self.name,__method__,errstr)
+				@@log.error(self.object_id,self.class.name,__method__,errstr)
 				puts(" " + errstr + "\r\n") if iDisp
 				return
 			end
 		rescue => exception
-			@@log.fatal(self.object_id,self.name,__method__,exception.to_s)
+			@@log.fatal(self.object_id,self.class.name,__method__,exception.to_s)
 			puts(" 失敗:" + exception.to_s + "\r\n") if iDisp
 			return
 		end
@@ -405,18 +407,18 @@ class OnePairBaiBai
 			buyOrderInfo = JSON.parse(@bbcc.create_order(@targetPair, @targetBuyAmount, @targetBuyPrice, "buy", "limit"))
 			if buyOrderInfo["success"]!=1 then
 				errstr = "失敗:" + buyOrderInfo["data"]["code"].to_s
-				@@log.error(self.object_id,self.name,__method__,errstr)
+				@@log.error(self.object_id,self.class.name,__method__,errstr)
 				puts(" " + errstr + "\r\n") if iDisp
 				errcode = buyOrderInfo["data"]["code"]
 				errcode = errcode.to_i
 				if errcode > 60000 then
-					@@log.debug(self.object_id,self.name,__method__,"GET_PRICEへ移動")
+					# @@log.debug(self.object_id,self.class.name,__method__,"GET_PRICEへ移動")
 					@currentStatus.setCurrentStatus(StatusValues::GET_PRICE)
 				end
 				return
 			end
 		rescue => exception
-			@@log.fatal(self.object_id,self.name,__method__,exception.to_s)
+			@@log.fatal(self.object_id,self.class.name,__method__,exception.to_s)
 			puts(" 失敗:" + exception.to_s + "\r\n") if iDisp
 			return
 		end
@@ -434,7 +436,9 @@ class OnePairBaiBai
 
 		#正常終了したので、次の状態へ
 		@currentStatus.next()
-		puts(" 成功 数量:" + @targetBuyAmount.to_s + " 金額:" + @targetBuyPrice.to_s + "\r\n") if iDisp
+		dispmsg = "成功 数量:" + @targetBuyAmount.to_s + " 金額:" + @targetBuyPrice.to_s 
+		puts(" " + dispmsg + "\r\n") if iDisp
+		@@log.debug(self.object_id,self.class.name,__method__,dispmsg)
 	end
 
 	########################################
@@ -464,13 +468,13 @@ class OnePairBaiBai
 			orderInfoGet = JSON.parse(@bbcc.read_active_orders(@targetPair))
 			if orderInfoGet["success"]!=1 then
 				errstr = "失敗:" + orderInfoGet["data"]["code"].to_s
-				@@log.error(self.object_id,self.name,__method__,errstr)
+				@@log.error(self.object_id,self.class.name,__method__,errstr)
 				dispStr = dispStr + " " + errstr + "\r\n" # puts(" 失敗:" + orderInfoGet["data"]["code"].to_s + "\r\n") if iDisp
 				puts(dispStr) if iDisp
 				return
 			end
 		rescue => exception
-			@@log.fatal(self.object_id,self.name,__method__,exception.to_s)
+			@@log.fatal(self.object_id,self.class.name,__method__,exception.to_s)
 			dispStr = dispStr + " " + "失敗:" + exception.to_s + "\r\n" # puts(" 失敗:" + exception.to_s + "\r\n") if iDisp
 			puts(dispStr) if iDisp
 			return
@@ -486,6 +490,7 @@ class OnePairBaiBai
 						@currentStatus.next()
 						dispStr = dispStr + " " + "成功 約定した。" + "\r\n" # puts(" 成功。約定した。" + "\r\n") if iDisp
 						puts(dispStr) if iDisp
+						@@log.debug(self.object_id,self.class.name,__method__,"約定した。FULLY_FILLED")
 						return
 					end
 					if oneOrderInfoGet["status"] == "PARTIALLY_FILLED" then
@@ -506,6 +511,7 @@ class OnePairBaiBai
 			@currentStatus.next()
 			dispStr = dispStr + " " + "成功 約定した。" + "\r\n" # puts(" 成功。約定した。" + "\r\n") if iDisp
 			puts(dispStr) if iDisp
+			@@log.debug(self.object_id,self.class.name,__method__,"約定した。NO_ORDERINFO")
 			return
 		end
 		# まだ注文が約定していない
@@ -565,18 +571,18 @@ class OnePairBaiBai
 			sellOrderInfo = JSON.parse(@bbcc.create_order(@targetPair, @targetSellAmount, @targetSellPrice, "sell", "limit"))
 			if sellOrderInfo["success"]!=1 then
 				errstr = "失敗:" + sellOrderInfo["data"]["code"].to_s
-				@@log.error(self.object_id,self.name,__method__,errstr)
+				@@log.error(self.object_id,self.class.name,__method__,errstr)
 				puts(" " + errstr + "\r\n") if iDisp
 				errcode = sellOrderInfo["data"]["code"]
 				errcode = errcode.to_i
 				if errcode > 60000 then
-					@@log.debug(self.object_id,self.name,__method__,"GET_PRICEへ移動")
+					# @@log.debug(self.object_id,self.class.name,__method__,"GET_PRICEへ移動")
 					@currentStatus.setCurrentStatus(StatusValues::GET_PRICE)
 				end
 				return
 			end
 		rescue => exception
-			@@log.fatal(self.object_id,self.name,__method__,exception.to_s)
+			@@log.fatal(self.object_id,self.class.name,__method__,exception.to_s)
 			puts(" 失敗:" + exception.to_s + "\r\n") if iDisp
 			return
 		end
@@ -594,7 +600,9 @@ class OnePairBaiBai
 
 		#正常終了したので、次の状態へ
 		@currentStatus.next()
-		puts(" 成功 数量:" + @targetSellAmount.to_s + " 金額:" + @targetSellPrice.to_s + "\r\n") if iDisp
+		dispmsg = "成功 数量:" + @targetSellAmount.to_s + " 金額:" + @targetSellPrice.to_s
+		puts(" " + dispmsg + "\r\n") if iDisp
+		@@log.debug(self.object_id,self.class.name,__method__,dispmsg)
 	end
 
 	#################
@@ -612,14 +620,14 @@ class OnePairBaiBai
 			cancelOrderInfo = JSON.parse(@bbcc.cancel_order(@targetPair, iOrder['order_id']))
 			if cancelOrderInfo["success"]!=1 then
 				errstr = "失敗:" + cancelOrderInfo["data"]["code"].to_s
-				@@log.error(self.object_id,self.name,__method__,errstr)
+				@@log.error(self.object_id,self.class.name,__method__,errstr)
 
 				dispStr = dispStr + " " + errstr + "\r\n"
 				errcode = cancelOrderInfo["data"]["code"]
 				errcode = errcode.to_i
 				if errcode > 50000 then
 					# 注文が存在しない or 注文キャンセルできない → リトライカウンタをリセットして購入約定待へ
-					@@log.debug(self.object_id,self.name,__method__,"WAIT_BUYへ移動")
+					# @@log.debug(self.object_id,self.class.name,__method__,"WAIT_BUYへ移動")
 					@myBuyOrderWaitCount = 0
 					@currentStatus.setCurrentStatus(StatusValues::WAIT_BUY)
 				end
@@ -628,7 +636,7 @@ class OnePairBaiBai
 				return
 			end
 		rescue => exception
-			@@log.fatal(self.object_id,self.name,__method__,exception.to_s)
+			@@log.fatal(self.object_id,self.class.name,__method__,exception.to_s)
 			dispStr = dispStr + " " + "失敗:" + exception.to_s + "\r\n" # puts(" 失敗:" + exception.to_s + "\r\n") if iDisp
 			puts(dispStr) if iDisp
 			return
@@ -638,6 +646,7 @@ class OnePairBaiBai
 		@currentStatus.next()
 		dispStr = dispStr + " " + "成功 取り消しした。" + "\r\n" # puts(" 成功。約定した。" + "\r\n") if iDisp
 		puts(dispStr) if iDisp
+		@@log.debug(self.object_id,self.class.name,__method__,"成功")
 		return
 	end
 
@@ -664,7 +673,7 @@ class OnePairBaiBai
 		print(" " + dispStr + "\r\n") if iDisp
 
 		# ログへ記録
-		@@log.info(self.object_id,self.name,__method__,dispStr)
+		@@log.info(self.object_id,self.class.name,__method__,dispStr)
 
 		# slack 通知
 		OnePairBaiBai.slackPost( dispStr )
