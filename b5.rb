@@ -1,4 +1,4 @@
-VERSION = "Version 1.4.8"
+VERSION = "Version 1.4.11"
 PROGRAMNAME = "BitBank BaiBai Bot (b5) "
 puts( PROGRAMNAME + VERSION )
 
@@ -7,6 +7,7 @@ require 'date'
 require 'io/console'
 require 'yaml'
 require 'slack/incoming/webhooks'
+require 'logger'
 
 require 'ruby_bitbankcc'
 
@@ -16,8 +17,8 @@ class Bitbankcc
 		@random = Random.new
 	end
 	def randomWait()
-		st=0.5
-		ed=3.0
+		st=0.6
+		ed=2.9
 		sleep(@random.rand(ed-st)+st) #2〜5秒待つ
 	end
 
@@ -163,7 +164,7 @@ class OnePairBaiBai
 	end
 
 	# コンストラクタ
-	def initialize(iTargetPair,iBbcc)
+	def initialize(iTargetPair,iBbcc,iLog)
 
 		# 引数で指定されたコインペアが存在するかチェック
 		if not BBCC_COIN_PAIR_NAMES.include?(iTargetPair) then
@@ -181,6 +182,9 @@ class OnePairBaiBai
 
 		# 最大購入待ち回数
 		@buyOrderWaitMaxRetry = 10
+
+		# ログクラスを保存
+		@@log = iLog
 
 		# 設定ファイル読み込み
 		readSetting()
@@ -252,6 +256,7 @@ class OnePairBaiBai
 	#################
 	def getMyAmout(iDisp)
 		print( DateTime.now ) if iDisp # 現在日時表示
+		print(" " + self.object_id.to_s) # オブジェクトIDを表示
 		print(" " + @targetPair) if iDisp # ペア名表示
 		print(" " + "残高情報取得") if iDisp
 		@bbcc.randomWait()
@@ -259,10 +264,13 @@ class OnePairBaiBai
 		begin
 			balance = JSON.parse(@bbcc.read_balance())
 			if balance["success"]!=1 then
-				puts(" 失敗:" + balance["data"]["code"].to_s + "\r\n") if iDisp
+				errstr = "失敗:" + balance["data"]["code"].to_s
+				@@log.error(self.object_id,self.name,__method__,errstr)
+				puts(" " + errstr + "\r\n") if iDisp
 				return
 			end
 		rescue => exception
+			@@log.fatal(self.object_id,self.name,__method__,exception.to_s)
 			puts(" 失敗:" + exception.to_s + "\r\n") if iDisp
 			return
 		end
@@ -293,6 +301,7 @@ class OnePairBaiBai
 		# たとえばamout['jpy']['free_amount']ってやれば、JPYの（使用可能)残高がわかる、二次元ハッシュを用意
 		@coinPrice = {} #Hash.new { |h,k| h[k] = {} }
 		print( DateTime.now ) if iDisp # 現在日時表示
+		print(" " + self.object_id.to_s) # オブジェクトIDを表示
 		print(" " + @targetPair) if iDisp # ペア名表示
 		print(" " + "価格情報取得") if iDisp
 		@bbcc.randomWait()
@@ -300,10 +309,13 @@ class OnePairBaiBai
 		begin
 			oneCoinPrice = JSON.parse(@bbcc.read_ticker(@targetPair))
 			if oneCoinPrice["success"]!=1 then
-				puts(" 失敗:" + oneCoinPrice["data"]["code".to_s] + "\r\n") if iDisp
+				errstr = "失敗:" + oneCoinPrice["data"]["code"].to_s
+				@@log.error(self.object_id,self.name,__method__,errstr)
+				puts(" " + errstr + "\r\n") if iDisp
 				return
 			end
 		rescue => exception
+			@@log.fatal(self.object_id,self.name,__method__,exception.to_s)
 			puts(" 失敗:" + exception.to_s + "\r\n") if iDisp
 			return
 		end
@@ -325,6 +337,7 @@ class OnePairBaiBai
 	#############################
 	def calcBuyPrice(iDisp)
 		# print( DateTime.now ) if iDisp # 現在日時表示
+		# print(" " + self.object_id.to_s) # オブジェクトIDを表示
 		# print(" " + @targetPair) if iDisp # ペア名表示
 		# print(" " + "購入価格計算") if iDisp
 
@@ -348,6 +361,7 @@ class OnePairBaiBai
 	#############################
 	def calcBuyAmount(iDisp)
 		# print( DateTime.now ) if iDisp # 現在日時表示
+		# print(" " + self.object_id.to_s) # オブジェクトIDを表示
 		# print(" " + @targetPair) if iDisp # ペア名表示
 		# print(" " + "購入数量計算") if iDisp
 
@@ -382,6 +396,7 @@ class OnePairBaiBai
 	###########################
 	def orderBuy(iDisp)
 		print( DateTime.now ) if iDisp # 現在日時表示
+		print(" " + self.object_id.to_s) # オブジェクトIDを表示
 		print(" " + @targetPair) if iDisp # ペア名表示
 		print(" " + "購入注文送信") if iDisp
 		@bbcc.randomWait()
@@ -389,15 +404,19 @@ class OnePairBaiBai
 		begin
 			buyOrderInfo = JSON.parse(@bbcc.create_order(@targetPair, @targetBuyAmount, @targetBuyPrice, "buy", "limit"))
 			if buyOrderInfo["success"]!=1 then
-				puts(" 失敗:" + buyOrderInfo["data"]["code"].to_s + "\r\n") if iDisp
+				errstr = "失敗:" + buyOrderInfo["data"]["code"].to_s
+				@@log.error(self.object_id,self.name,__method__,errstr)
+				puts(" " + errstr + "\r\n") if iDisp
 				errcode = buyOrderInfo["data"]["code"]
 				errcode = errcode.to_i
 				if errcode > 60000 then
+					@@log.debug(self.object_id,self.name,__method__,"GET_PRICEへ移動")
 					@currentStatus.setCurrentStatus(StatusValues::GET_PRICE)
 				end
 				return
 			end
 		rescue => exception
+			@@log.fatal(self.object_id,self.name,__method__,exception.to_s)
 			puts(" 失敗:" + exception.to_s + "\r\n") if iDisp
 			return
 		end
@@ -424,6 +443,7 @@ class OnePairBaiBai
 	def waitOrder(iDisp,iWaitOrdeDisp,iOrder)
 		dispStr = ""
 		dispStr = dispStr + DateTime.now.to_s # print( DateTime.now ) if iDisp # 現在日時表示
+		dispStr = dispStr + " " + self.object_id.to_s # print(" " + self.object_id.to_s) # オブジェクトIDを表示
 		dispStr = dispStr + " " + @targetPair.to_s # print(" " + @targetPair) if iDisp # ペア名表示
 		dispStr = dispStr + " " + "注文完了待機" # print(" " + "注文完了待機") if iDisp
 
@@ -443,11 +463,14 @@ class OnePairBaiBai
 		begin
 			orderInfoGet = JSON.parse(@bbcc.read_active_orders(@targetPair))
 			if orderInfoGet["success"]!=1 then
-				dispStr = dispStr + " " + "失敗:" + orderInfoGet["data"]["code"].to_s + "\r\n" # puts(" 失敗:" + orderInfoGet["data"]["code"].to_s + "\r\n") if iDisp
+				errstr = "失敗:" + orderInfoGet["data"]["code"].to_s
+				@@log.error(self.object_id,self.name,__method__,errstr)
+				dispStr = dispStr + " " + errstr + "\r\n" # puts(" 失敗:" + orderInfoGet["data"]["code"].to_s + "\r\n") if iDisp
 				puts(dispStr) if iDisp
 				return
 			end
 		rescue => exception
+			@@log.fatal(self.object_id,self.name,__method__,exception.to_s)
 			dispStr = dispStr + " " + "失敗:" + exception.to_s + "\r\n" # puts(" 失敗:" + exception.to_s + "\r\n") if iDisp
 			puts(dispStr) if iDisp
 			return
@@ -495,6 +518,7 @@ class OnePairBaiBai
 	#############################
 	def calcSellPrice(iDisp)
 		# print( DateTime.now ) if iDisp # 現在日時表示
+		# print(" " + self.object_id.to_s) # オブジェクトIDを表示
 		# print(" " + @targetPair) if iDisp # ペア名表示
 		# print(" " + "販売価格計算") if iDisp
 
@@ -513,6 +537,7 @@ class OnePairBaiBai
 	#############################
 	def calcSellAmount(iDisp)
 		# print( DateTime.now ) if iDisp # 現在日時表示
+		# print(" " + self.object_id.to_s) # オブジェクトIDを表示
 		# print(" " + @targetPair) if iDisp # ペア名表示
 		# print(" " + "販売数量計算") if iDisp
 
@@ -531,6 +556,7 @@ class OnePairBaiBai
 	###########################
 	def orderSell(iDisp)
 		print( DateTime.now ) if iDisp # 現在日時表示
+		print(" " + self.object_id.to_s) # オブジェクトIDを表示
 		print(" " + @targetPair) if iDisp # ペア名表示
 		print(" " + "販売注文送信") if iDisp
 		@bbcc.randomWait()
@@ -538,15 +564,19 @@ class OnePairBaiBai
 		begin
 			sellOrderInfo = JSON.parse(@bbcc.create_order(@targetPair, @targetSellAmount, @targetSellPrice, "sell", "limit"))
 			if sellOrderInfo["success"]!=1 then
-				puts(" 失敗:" + sellOrderInfo["data"]["code"].to_s + "\r\n") if iDisp
+				errstr = "失敗:" + sellOrderInfo["data"]["code"].to_s
+				@@log.error(self.object_id,self.name,__method__,errstr)
+				puts(" " + errstr + "\r\n") if iDisp
 				errcode = sellOrderInfo["data"]["code"]
 				errcode = errcode.to_i
 				if errcode > 60000 then
+					@@log.debug(self.object_id,self.name,__method__,"GET_PRICEへ移動")
 					@currentStatus.setCurrentStatus(StatusValues::GET_PRICE)
 				end
 				return
 			end
 		rescue => exception
+			@@log.fatal(self.object_id,self.name,__method__,exception.to_s)
 			puts(" 失敗:" + exception.to_s + "\r\n") if iDisp
 			return
 		end
@@ -573,6 +603,7 @@ class OnePairBaiBai
 	def cancelOrder(iDisp,iOrder)
 		dispStr = ""
 		dispStr = dispStr + DateTime.now.to_s
+		dispStr = dispStr + " " + self.object_id.to_s
 		dispStr = dispStr + " " + @targetPair.to_s
 		dispStr = dispStr + " " + "注文取り消し"
 		@bbcc.randomWait()
@@ -580,17 +611,24 @@ class OnePairBaiBai
 		begin
 			cancelOrderInfo = JSON.parse(@bbcc.cancel_order(@targetPair, iOrder['order_id']))
 			if cancelOrderInfo["success"]!=1 then
-				dispStr = dispStr + " " + "失敗:" + cancelOrderInfo["data"]["code"].to_s + "\r\n"
+				errstr = "失敗:" + cancelOrderInfo["data"]["code"].to_s
+				@@log.error(self.object_id,self.name,__method__,errstr)
+
+				dispStr = dispStr + " " + errstr + "\r\n"
 				errcode = cancelOrderInfo["data"]["code"]
 				errcode = errcode.to_i
 				if errcode > 50000 then
-					@currentStatus.setCurrentStatus(StatusValues::GET_PRICE)
+					# 注文が存在しない or 注文キャンセルできない → リトライカウンタをリセットして購入約定待へ
+					@@log.debug(self.object_id,self.name,__method__,"WAIT_BUYへ移動")
+					@myBuyOrderWaitCount = 0
+					@currentStatus.setCurrentStatus(StatusValues::WAIT_BUY)
 				end
 				puts(dispStr) if iDisp
 				@currentStatus.next()
 				return
 			end
 		rescue => exception
+			@@log.fatal(self.object_id,self.name,__method__,exception.to_s)
 			dispStr = dispStr + " " + "失敗:" + exception.to_s + "\r\n" # puts(" 失敗:" + exception.to_s + "\r\n") if iDisp
 			puts(dispStr) if iDisp
 			return
@@ -608,6 +646,7 @@ class OnePairBaiBai
 	###########
 	def dispProfits(iDisp)
 		print( DateTime.now ) if iDisp # 現在日時表示
+		print(" " + self.object_id.to_s) # オブジェクトIDを表示
 		print(" " + @targetPair) if iDisp # ペア名表示
 		print(" " + "利益表示") if iDisp
 
@@ -623,6 +662,9 @@ class OnePairBaiBai
 		# 表示
 		dispStr = "今回売買:" + currentProfits.to_s + " ###合計利益:" + @@totalProfits[unitName].to_s + " " + unitName.to_s
 		print(" " + dispStr + "\r\n") if iDisp
+
+		# ログへ記録
+		@@log.info(self.object_id,self.name,__method__,dispStr)
 
 		# slack 通知
 		OnePairBaiBai.slackPost( dispStr )
@@ -640,20 +682,63 @@ class OnePairBaiBai
 	end
 end
 
+class MyLog < Logger
+	def enable
+		@enable
+	end
+	def enable=(newValue)
+		@enable = newValue
+	end
+	def debug(iObjectID,iClassName,iMethodName,iMsg)
+		return if !@enable
+		super(iObjectID.to_s + " " + iClassName.to_s + " " + iMethodName.to_s + " " + iMsg)
+	end
+	def info(iObjectID,iClassName,iMethodName,iMsg)
+		return if !@enable
+		super(iObjectID.to_s + " " + iClassName.to_s + " " + iMethodName.to_s + " " + iMsg)
+	end
+	def warn(iObjectID,iClassName,iMethodName,iMsg)
+		return if !@enable
+		super(iObjectID.to_s + " " + iClassName.to_s + " " + iMethodName.to_s + " " + iMsg)
+	end
+	def error(iObjectID,iClassName,iMethodName,iMsg)
+		return if !@enable
+		super(iObjectID.to_s + " " + iClassName.to_s + " " + iMethodName.to_s + " " + iMsg)
+	end
+	def fatal(iObjectID,iClassName,iMethodName,iMsg)
+		return if !@enable
+		super(iObjectID.to_s + " " + iClassName.to_s + " " + iMethodName.to_s + " " + iMsg)
+	end
+	def unknown(iObjectID,iClassName,iMethodName,iMsg)
+		return if !@enable
+		super(iObjectID.to_s + " " + iClassName.to_s + " " + iMethodName.to_s + " " + iMsg)
+	end
+end
+
+# 設定ファイル読み込み
+setting = YAML.load_file("setting.yaml")
+
+# ログクラスを作成
+log = MyLog.new(setting["log"]["filepath"])
+log.enable = setting["log"]["enable"]
+
+log.info(self.object_id,"main","main",(PROGRAMNAME + VERSION))
+
+# APIキーをファイルから読み込んでクラス初期化
 configAPIKEY = YAML.load_file("apikey.yaml")
 bbcc = Bitbankcc.new(configAPIKEY["apikey"],configAPIKEY["seckey"])
 bbcc.initRandom()
 
 # 売買を行うものをファイルから読み込む
-setting = YAML.load_file("setting.yaml")
 targetbaibailist = setting["targetBaiBailist"]
 
 # 売買を行うものを配列baibaisに格納
 baibais = [] # 空の配列を作成
 for pairName in targetbaibailist do
-	baibais.push(OnePairBaiBai.new(pairName,bbcc))
+	baibais.push(OnePairBaiBai.new(pairName,bbcc,log))
 end
 
+# プログラム名をslackに表示（起動通知）
 OnePairBaiBai.slackPost (PROGRAMNAME + VERSION)
 
 baibaiDisp = true
@@ -681,6 +766,7 @@ loop do
 			end
 		end
 	rescue Exception => e
+		log.fatal(self.object_id,"main","main",e.to_s)
 		puts "何か問題が発生しました。"
 		p e
 	end
@@ -702,11 +788,16 @@ loop do
 			baibais.push(OnePairBaiBai.new("btc_jpy",bbcc))
 			puts("追加しました。")
 		when "dispallprofits"
-			pp OnePairBaiBai.getTotalProfits()			
+			pp OnePairBaiBai.getTotalProfits()
+		when "endprogram"
+			log.info(self.object_id,"main","main","終了します。")
+			puts "終了します。"
+			exit 0
 		else
 			begin
 				eval(inputcommand)
 			rescue Exception => e
+				log.fatal(self.object_id,"main","main",e.to_s)
 				puts "何か問題が発生しました。"
 				p e
 			end

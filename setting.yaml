@@ -19,3 +19,8 @@ slack:
 
 targetBaiBailist: ["btc_jpy", "btc_jpy", "btc_jpy", "btc_jpy", "btc_jpy"]
 # ↑売買を行う通貨ペアを指定する
+
+# ↓logに関する設定
+log:
+  enable: true
+  filepath: "b5.log"
