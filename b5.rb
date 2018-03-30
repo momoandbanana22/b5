@@ -1,4 +1,4 @@
-VERSION = "Version 1.4.12"
+VERSION = "Version 1.4.13"
 PROGRAMNAME = "BitBank BaiBai Bot (b5) "
 puts( PROGRAMNAME + VERSION )
 
@@ -632,7 +632,6 @@ class OnePairBaiBai
 					@currentStatus.setCurrentStatus(StatusValues::WAIT_BUY)
 				end
 				puts(dispStr) if iDisp
-				@currentStatus.next()
 				return
 			end
 		rescue => exception
