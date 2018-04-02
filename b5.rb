@@ -1,4 +1,4 @@
-VERSION = "Version 1.4.13"
+VERSION = "Version 1.4.14"
 PROGRAMNAME = "BitBank BaiBai Bot (b5) "
 puts( PROGRAMNAME + VERSION )
 
@@ -8,6 +8,7 @@ require 'io/console'
 require 'yaml'
 require 'slack/incoming/webhooks'
 require 'logger'
+require 'slack-ruby-bot'
 
 require 'ruby_bitbankcc'
 
@@ -668,7 +669,8 @@ class OnePairBaiBai
 		@@totalProfits[unitName] = @@totalProfits[unitName].to_f + currentProfits
 
 		# 表示
-		dispStr = "今回売買:" + currentProfits.to_s + " ###合計利益:" + @@totalProfits[unitName].to_s + " " + unitName.to_s
+		# dispStr = "今回売買:" + currentProfits.to_s + " ###合計利益:" + @@totalProfits[unitName].to_s + " " + unitName.to_s
+		dispStr = "合計:" + @@totalProfits[unitName].to_s + " " + unitName.to_s + " 今回:" + currentProfits.to_s 
 		print(" " + dispStr + "\r\n") if iDisp
 
 		# ログへ記録
@@ -762,53 +764,45 @@ myBaiBaiThread = Thread.start {
 	end
 }
 
-loop do
-	begin
-		$stdin.raw do |io|
-			loop do
-				ch = io.readbyte
-				exit 0 if ch==3 # CTRL+Cが押されたらプログラム終了
 
-				# 何かキーが押されたので、コマンドモードへ。
-				break # exit loop
-			end
-		end
-	rescue Exception => e
-		log.fatal(self.object_id,"main","main",e.to_s)
-		puts "何か問題が発生しました。"
-		p e
+SlackRubyBot::Client.logger.level = Logger::WARN
+
+class Bot
+	def initialize(baibais,bbcc,log)
+		@baibais = baibais
+		@bbcc = bbcc
+		@log = log
 	end
 
-	# コマンドモード
-	commandmode = true
-	runningmode = false
-	puts("\r\n処理中断中・・・")
-	sleep(5)
-	while(commandmode)
-		puts "コマンドを入力してください。(gotobaibaiで実行に戻る)"
-		inputcommand = gets.to_s.chomp
-		case inputcommand
-		when "gotobaibai"
-			puts "継続実行開始"
-			commandmode = false
-			runningmode = true
-		when "add btc_jpy"
-			baibais.push(OnePairBaiBai.new("btc_jpy",bbcc))
-			puts("追加しました。")
-		when "dispallprofits"
-			pp OnePairBaiBai.getTotalProfits()
-		when "endprogram"
-			log.info(self.object_id,"main","main","終了します。")
-			puts "終了します。"
-			exit 0
-		else
-			begin
-				eval(inputcommand)
-			rescue Exception => e
-				log.fatal(self.object_id,"main","main",e.to_s)
-				puts "何か問題が発生しました。"
-				p e
+	def call(client, data)
+		begin
+			sendtext = ""
+			inputcommand = data.text
+			case inputcommand
+			when "add btc_jpy"
+				@baibais.push(OnePairBaiBai.new("btc_jpy",@bbcc,@log))
+				sendtext ="btc_jpyを１つ追加しました。合計で" + @baibais.size.to_s + "件動作しています。"
+			when "dispallprofits"
+				sendtext = "利益:" + OnePairBaiBai.getTotalProfits().pretty_inspect.to_s
+			when "version"
+				sendtext = PROGRAMNAME + VERSION
+			when "help"
+				sendtext = "add btc_jpy\ndispallprofits\nversion\nhelp"
+			else
+				sendtext = eval(inputcommand)
 			end
+		rescue Exception => e
+			# log.fatal(self.object_id,"main","main",e.to_s)
+			sendtext = "何か問題が発生しました。\n" + e.to_s
 		end
+		client.say(text: sendtext, channel: data.channel)
 	end
 end
+
+server = SlackRubyBot::Server.new(
+  token: setting["slack"]["botAPItoken"],
+  hook_handlers: {
+    message: Bot.new(baibais, bbcc, log)
+  }
+)
+server.run
