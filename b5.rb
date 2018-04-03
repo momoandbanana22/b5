@@ -1,4 +1,4 @@
-VERSION = "Version 1.4.14"
+VERSION = "Version 1.4.15"
 PROGRAMNAME = "BitBank BaiBai Bot (b5) "
 puts( PROGRAMNAME + VERSION )
 
@@ -690,6 +690,17 @@ class OnePairBaiBai
 	def self.getTotalProfits()
 		return @@totalProfits
 	end
+
+	def get_waiting_order
+		case @currentStatus.getCurrentStatus()
+		when StatusValues::WAIT_BUY				# 購入約定待ち
+			@myBuyOrderInfo.pretty_inspect.to_s
+		when StatusValues::WAIT_SELL			# 販売約定待ち
+			@mySellOrderInfo.pretty_inspect.to_s
+		else
+			""
+		end
+	end
 end
 
 class MyLog < Logger
@@ -784,10 +795,19 @@ class Bot
 				sendtext ="btc_jpyを１つ追加しました。合計で" + @baibais.size.to_s + "件動作しています。"
 			when "dispallprofits"
 				sendtext = "利益:" + OnePairBaiBai.getTotalProfits().pretty_inspect.to_s
+			when "dispwaitorders"
+				sendtext = "オーダー待ちは\n"
+				for oneBaibai in @baibais do
+					tmp = oneBaibai.get_waiting_order
+					if tmp != ""
+						sendtext = sendtext + tmp + "\n"
+					end
+				end
+				sendtext = sendtext + "・・・以上です"
 			when "version"
 				sendtext = PROGRAMNAME + VERSION
 			when "help"
-				sendtext = "add btc_jpy\ndispallprofits\nversion\nhelp"
+				sendtext = "add btc_jpy\ndispallprofits\ndispwaitorders\nversion\nhelp"
 			else
 				sendtext = eval(inputcommand)
 			end
