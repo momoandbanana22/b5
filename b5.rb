@@ -1,4 +1,4 @@
-VERSION = "Version 1.4.15"
+VERSION = "Version 1.4.17"
 PROGRAMNAME = "BitBank BaiBai Bot (b5) "
 puts( PROGRAMNAME + VERSION )
 
@@ -51,6 +51,28 @@ class Bitbankcc
 				# APIアクセス失敗→リトライ
 			end
 		end
+	end
+end
+
+class Trend
+	def initialize()
+		@price_history = []
+		@delta = 0
+	end
+	def add_price_info(iCoinPriceInfo)
+		new_price = iCoinPriceInfo['last'].to_f
+		@price_history.push ( new_price )
+		if @price_history.size == 1 then
+			@delta = 0
+		else
+			# @price_history.size==2
+			@delta = @price_history[1] - @price_history[0]
+			@price_history.shift # del [0]
+		end
+		return @delta
+	end
+	def get_trend
+		return @delta
 	end
 end
 
@@ -189,6 +211,8 @@ class OnePairBaiBai
 
 		# 設定ファイル読み込み
 		readSetting()
+
+		@trend = Trend.new()
 	end
 
 	def readSetting
@@ -330,6 +354,13 @@ class OnePairBaiBai
 			end
 		end
 
+		# 現在の価格情報を傾向管理クラスに渡す
+		if @trend.add_price_info(@coinPrice)<0 then
+			# 価格が降下しているので、購入しない＝価格取得をやり直す
+			puts(" 価格降下中" + "\r\n") if iDisp
+			return
+		end
+
 		#正常終了したので、次の状態へ
 		@currentStatus.next()
 		puts(" 成功" + "\r\n") if iDisp
@@ -347,7 +378,7 @@ class OnePairBaiBai
 		# 購入価格を、現在の板の購入価格にする
 		@targetBuyPrice = @coinPrice["buy"].to_f
 		if ((Time.now.to_f * 1000).to_i % 10 >4) then
-			@targetBuyPrice = @targetBuyPrice * 1.001
+			@targetBuyPrice = @targetBuyPrice * 1.0005
 		else
 			@targetBuyPrice = @targetBuyPrice / 1.001
 		end
