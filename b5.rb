@@ -1,4 +1,4 @@
-VERSION = "Version 1.4.17"
+VERSION = "Version 1.4.18"
 PROGRAMNAME = "BitBank BaiBai Bot (b5) "
 puts( PROGRAMNAME + VERSION )
 
@@ -11,6 +11,8 @@ require 'logger'
 require 'slack-ruby-bot'
 
 require 'ruby_bitbankcc'
+
+$end_request = false
 
 # Bitbankccクラスにメソッドを追加する
 class Bitbankcc
@@ -795,17 +797,16 @@ OnePairBaiBai.slackPost (PROGRAMNAME + VERSION)
 
 baibaiDisp = true
 waitOrderDisp = false
-commandmode = false
 runningmode = true
 
 myBaiBaiThread = Thread.start {
 	while(true)
 		for oneBaibai in baibais do
 			oneBaibai.doBaibai(baibaiDisp,waitOrderDisp) if runningmode
+			exit(0) if $end_request
 		end
 	end
 }
-
 
 SlackRubyBot::Client.logger.level = Logger::WARN
 
@@ -835,10 +836,13 @@ class Bot
 					end
 				end
 				sendtext = sendtext + "・・・以上です"
+			when "exitprogram"
+				sendtext = "プログラムを終了します。"
+				$end_request = true
 			when "version"
 				sendtext = PROGRAMNAME + VERSION
 			when "help"
-				sendtext = "add btc_jpy\ndispallprofits\ndispwaitorders\nversion\nhelp"
+				sendtext = "add btc_jpy\ndispallprofits\ndispwaitorders\nexitprogram\nversion\nhelp"
 			else
 				sendtext = eval(inputcommand)
 			end
