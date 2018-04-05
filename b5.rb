@@ -1,4 +1,4 @@
-VERSION = "Version 1.4.20"
+VERSION = "Version 1.4.21"
 PROGRAMNAME = "BitBank BaiBai Bot (b5) "
 puts( PROGRAMNAME + VERSION )
 
@@ -61,10 +61,16 @@ class Trend
 		@pair = iPair
 		@price_history = []
 		@delta = 0
+		@old_price = 0
 	end
 	def add_price_info(iCoinPriceInfo)
 		new_price = iCoinPriceInfo['last'].to_f
+		if @old_price == new_price then
+			@delta = 0
+			return @delta
+		end
 		@price_history.push ( new_price )
+		@old_price = new_price
 		if @price_history.size == 1 then
 			@delta = 0
 		elsif @price_history.size == 2 then
