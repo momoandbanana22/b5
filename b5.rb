@@ -1,4 +1,4 @@
-VERSION = "Version 1.4.22"
+VERSION = "Version 1.4.23"
 PROGRAMNAME = "BitBank BaiBai Bot (b5) "
 puts( PROGRAMNAME + VERSION )
 
@@ -402,6 +402,7 @@ class OnePairBaiBai
 		#正常終了したので、次の状態へ
 		@currentStatus.next()
 		puts(" 成功" + "\r\n") if iDisp
+		calcBuyPrice(iDisp)
 	end
 
 	#############################
