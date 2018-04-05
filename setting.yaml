@@ -10,6 +10,9 @@ magnification: 1.0005
 buyOrderWaitMaxRetry: 3
 # ↑最大購入待ち回数
 
+sellOrderWaitMaxRetry: 3
+# ↑最大販売待ち回数
+
 # ↓slackに関する設定
 slack:
   use: false
@@ -24,5 +27,5 @@ targetBaiBailist: ["btc_jpy", "btc_jpy", "btc_jpy", "btc_jpy", "btc_jpy"]
 
 # ↓logに関する設定
 log:
-  enable: true
+  enable: false
   filepath: "b5.log"

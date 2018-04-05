@@ -1,4 +1,4 @@
-VERSION = "Version 1.4.18"
+VERSION = "Version 1.4.19"
 PROGRAMNAME = "BitBank BaiBai Bot (b5) "
 puts( PROGRAMNAME + VERSION )
 
@@ -112,19 +112,20 @@ class OnePairBaiBai
 	end
 
 	module StatusValues
-		INITSTATUS		= 0	 # 初期状態
-		GET_MYAMOUT		= 1  # 残高取得中
-		GET_PRICE		= 2  # 現在価格取得
-		CALC_BUYPRICE	= 3  # 購入価格計算
-		CALC_BUYAMOUNT	= 4	 # 購入数量計算
-		ORDER_BUY		= 5  # 発注(購入)
-		WAIT_BUY		= 6  # 購入約定待ち
-		CALC_SELLPRICE	= 7  # 販売価格計算
-		CALC_SELLAMOUNT	= 8	 # 販売数量計算
-		ORDER_SELL		= 9	 # 発注(販売)
-		WAIT_SELL		= 10 # 販売約定待ち
-		CANSEL_BUYORDER = 11 # 購入注文中断
-		DISP_PROFITS	= 12 # 利益表示
+		INITSTATUS		 = 0	 # 初期状態
+		GET_MYAMOUT		 = 1  # 残高取得中
+		GET_PRICE		 = 2  # 現在価格取得
+		CALC_BUYPRICE	 = 3  # 購入価格計算
+		CALC_BUYAMOUNT	 = 4	 # 購入数量計算
+		ORDER_BUY		 = 5  # 発注(購入)
+		WAIT_BUY		 = 6  # 購入約定待ち
+		CALC_SELLPRICE	 = 7  # 販売価格計算
+		CALC_SELLAMOUNT	 = 8	 # 販売数量計算
+		ORDER_SELL		 = 9	 # 発注(販売)
+		WAIT_SELL		 = 10 # 販売約定待ち
+		CANSEL_BUYORDER  = 11 # 購入注文中断
+		CANSEL_SELLORDER = 12 # 購入注文中断
+		DISP_PROFITS	 = 13 # 利益表示
 	end
 	class Status
 		@@STATUS_NAMES = {
@@ -140,6 +141,7 @@ class OnePairBaiBai
 			StatusValues::ORDER_SELL		=> "発注(販売)" ,
 			StatusValues::WAIT_SELL			=> "販売約定待ち" ,
 			StatusValues::CANSEL_BUYORDER	=> "購入注文中断" ,
+			StatusValues::CANSEL_SELLORDER	=> "販売注文中断" ,
 			StatusValues::DISP_PROFITS		=> "利益表示" ,
 		}
 		def initialize()
@@ -173,6 +175,8 @@ class OnePairBaiBai
 				@currentStatus=StatusValues::GET_MYAMOUT
 			when StatusValues::CANSEL_BUYORDER		# 購入注文中断
 				@currentStatus=StatusValues::GET_MYAMOUT
+			when StatusValues::CANSEL_SELLORDER		# 販売注文中断
+				@currentStatus=StatusValues::CALC_SELLPRICE
 			else
 				@currentStatus=StatusValues::INITSTATUS
 			end
@@ -208,6 +212,9 @@ class OnePairBaiBai
 		# 最大購入待ち回数
 		@buyOrderWaitMaxRetry = 10
 
+		# 最大販売待ち回数
+		@sellOrderWaitMaxRetry = 10
+
 		# ログクラスを保存
 		@@log = iLog
 
@@ -223,6 +230,7 @@ class OnePairBaiBai
 		@@amountBTCtoPurchaseAtOneTime	= setting["amountBTCtoPurchaseAtOneTime"].to_f
 		@@magnification					= setting["magnification"].to_f
 		@buyOrderWaitMaxRetry			= setting["buyOrderWaitMaxRetry"].to_i
+		@sellOrderWaitMaxRetry			= setting["sellOrderWaitMaxRetry"].to_i
 		@@slackUse = setting["slack"]["use"]
 		if @@slackUse then
 			@@slack = Slack::Incoming::Webhooks.new setting["slack"]["webhookURL"]
@@ -273,6 +281,8 @@ class OnePairBaiBai
 			dispProfits(iDisp)
 		when StatusValues::CANSEL_BUYORDER		# 購入注文中断
 			cancelOrder(iDisp,@myBuyOrderInfo)
+		when StatusValues::CANSEL_SELLORDER		# 販売注文中断
+			cancelOrder(iDisp,@mySellOrderInfo)
 		else
 			@currentStatus.setCurrentStatus(StatusValues::INITSTATUS)
 		end
@@ -465,7 +475,7 @@ class OnePairBaiBai
 			end
 		end
 
-		# 約定待リトライカウンタ初期化
+		# 購入約定待リトライカウンタ初期化
 		@myBuyOrderWaitCount = 0
 
 		#正常終了したので、次の状態へ
@@ -483,9 +493,9 @@ class OnePairBaiBai
 		dispStr = dispStr + DateTime.now.to_s # print( DateTime.now ) if iDisp # 現在日時表示
 		dispStr = dispStr + " " + self.object_id.to_s # print(" " + self.object_id.to_s) # オブジェクトIDを表示
 		dispStr = dispStr + " " + @targetPair.to_s # print(" " + @targetPair) if iDisp # ペア名表示
-		dispStr = dispStr + " " + "注文完了待機" # print(" " + "注文完了待機") if iDisp
+		side = iOrder["side"].to_s
+		dispStr = dispStr + " " + side + "注文完了待機" # print(" " + "注文完了待機") if iDisp
 
-		side = iOrder["side"]
 		if side == "buy" then
 			if @myBuyOrderWaitCount>@buyOrderWaitMaxRetry then 
 				@currentStatus.setCurrentStatus(StatusValues::CANSEL_BUYORDER)
@@ -494,6 +504,14 @@ class OnePairBaiBai
 				return
 			end
 			@myBuyOrderWaitCount = @myBuyOrderWaitCount + 1
+		elsif side == "sell" then
+			if @mySellOrderWaitCount>@sellOrderWaitMaxRetry then 
+				@currentStatus.setCurrentStatus(StatusValues::CANSEL_SELLORDER)
+				dispStr = dispStr + " " + "失敗:リトライアウト" + "\r\n"
+				puts(dispStr) if (iDisp && iWaitOrdeDisp)
+				return
+			end
+			@mySellOrderWaitCount = @mySellOrderWaitCount + 1
 		end
 
 		@bbcc.randomWait()
@@ -530,6 +548,7 @@ class OnePairBaiBai
 					if oneOrderInfoGet["status"] == "PARTIALLY_FILLED" then
 						# 一部約定してしまったので、キャンセルしないように、リトライカウンタをリセット
 						@myBuyOrderWaitCount = 0
+						@mySellOrderWaitCount = 0
 						# まだ注文が約定していない
 						dispStr = dispStr + " " + "成功" + "\r\n" # puts(" 成功" + "\r\n") if iDisp
 						puts(dispStr) if (iDisp && iWaitOrdeDisp)
@@ -562,9 +581,18 @@ class OnePairBaiBai
 		# print(" " + @targetPair) if iDisp # ペア名表示
 		# print(" " + "販売価格計算") if iDisp
 
-		# 販売価格を、購入価格の1.001倍にする
+		# 販売価格を、購入価格の1.001倍(設定ファイル)にする
 		@targetSellPrice = @targetBuyPrice.to_f * @@magnification
+
+		# 販売予定価格(購入価格の1.001倍)より、市場販売価格(の0.999倍)のほうが高ければ、市場販売価格市場販売価格(の0.999倍)にする。つまり、高く売る。
+		# (販売価格 = 市場価格÷1.001 if 購入価格×1.01<市場価格÷1.01)
+		market_price = @coinPrice["sell"].to_f / @@magnification
+		if @targetSellPrice < market_price then		
+			@targetSellPrice = market_price
+			puts("販売価格を市場価格に更新:" +  + @targetSellPrice.to_s) if iDisp
+		end
 		# print(" " + @targetSellPrice.to_s) if iDisp
+		
 
 		#正常終了したので、次の状態へ
 		@currentStatus.next()
@@ -629,7 +657,7 @@ class OnePairBaiBai
 			end
 		end
 
-		# 約定待リトライカウンタ初期化
+		# 販売約定待リトライカウンタ初期化
 		@mySellOrderWaitCount = 0
 
 		#正常終了したので、次の状態へ
@@ -647,7 +675,7 @@ class OnePairBaiBai
 		dispStr = dispStr + DateTime.now.to_s
 		dispStr = dispStr + " " + self.object_id.to_s
 		dispStr = dispStr + " " + @targetPair.to_s
-		dispStr = dispStr + " " + "注文取り消し"
+		dispStr = dispStr + " " + iOrder["side"].to_s + "注文取り消し"
 		@bbcc.randomWait()
 
 		begin
@@ -663,6 +691,7 @@ class OnePairBaiBai
 					# 注文が存在しない or 注文キャンセルできない → リトライカウンタをリセットして購入約定待へ
 					# @@log.debug(self.object_id,self.class.name,__method__,"WAIT_BUYへ移動")
 					@myBuyOrderWaitCount = 0
+					@mySellOrderWaitCount = 0
 					@currentStatus.setCurrentStatus(StatusValues::WAIT_BUY)
 				end
 				puts(dispStr) if iDisp
