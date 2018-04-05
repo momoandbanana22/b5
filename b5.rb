@@ -1,4 +1,4 @@
-VERSION = "Version 1.4.21"
+VERSION = "Version 1.4.22"
 PROGRAMNAME = "BitBank BaiBai Bot (b5) "
 puts( PROGRAMNAME + VERSION )
 
@@ -263,7 +263,10 @@ class OnePairBaiBai
 	# slack通知を送信する
 	def self.slackPost(iMsg)
 		if @@slackUse then
-			@@slack.post iMsg
+			begin
+				@@slack.post iMsg
+			rescue Exception => e
+			end
 		end
 	end
 
@@ -902,7 +905,14 @@ class Bot
 			# log.fatal(self.object_id,"main","main",e.to_s)
 			sendtext = "何か問題が発生しました。\n" + e.to_s
 		end
-		client.say(text: sendtext, channel: data.channel)
+		begin
+			client.say(text: sendtext, channel: data.channel)
+		rescue Exception => e
+		end
+		if $end_request then
+			sleep(5)
+			exit(0)
+		end
 	end
 end
 
