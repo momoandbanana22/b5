@@ -1,4 +1,4 @@
-VERSION = "Version 1.4.19"
+VERSION = "Version 1.4.20"
 PROGRAMNAME = "BitBank BaiBai Bot (b5) "
 puts( PROGRAMNAME + VERSION )
 
@@ -57,7 +57,8 @@ class Bitbankcc
 end
 
 class Trend
-	def initialize()
+	def initialize(iPair)
+		@pair = iPair
 		@price_history = []
 		@delta = 0
 	end
@@ -66,9 +67,19 @@ class Trend
 		@price_history.push ( new_price )
 		if @price_history.size == 1 then
 			@delta = 0
+		elsif @price_history.size == 2 then
+			@delta = 0
 		else
-			# @price_history.size==2
-			@delta = @price_history[1] - @price_history[0]
+			# @price_history.size==3
+			d1 = @price_history[1] - @price_history[0]
+			d2 = @price_history[2] - @price_history[1]
+			if d2<=0 then
+				@delta = 0
+			elsif d1>0 and d2>0 then
+				@delta = d1 + d2
+			elsif d1<0 and d2>0 then
+				@delta = d1 + d2
+			end
 			@price_history.shift # del [0]
 		end
 		return @delta
@@ -84,6 +95,9 @@ class OnePairBaiBai
 
 	# 全体の利益
 	@@totalProfits = { "btc" => 0, "jpy" => 0 }
+
+	# トレンドを初期化
+	@@trend = {}
 
 	# 一度に購入する最大金額
 	@@amountJPYtoPurchaseAtOneTime = 10000.0 # 一万円分
@@ -221,7 +235,10 @@ class OnePairBaiBai
 		# 設定ファイル読み込み
 		readSetting()
 
-		@trend = Trend.new()
+		# このコインペアでのインスタンス生成がはじめてなら、トレンドインスタンスを作成する
+		if not @@trend[@targetPair] then
+			@@trend[@targetPair] = Trend.new(@targetPair)
+		end
 	end
 
 	def readSetting
@@ -367,7 +384,7 @@ class OnePairBaiBai
 		end
 
 		# 現在の価格情報を傾向管理クラスに渡す
-		if @trend.add_price_info(@coinPrice)<0 then
+		if @@trend[@targetPair].add_price_info(@coinPrice)<=0 then
 			# 価格が降下しているので、購入しない＝価格取得をやり直す
 			puts(" 価格降下中" + "\r\n") if iDisp
 			return
