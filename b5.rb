@@ -1,4 +1,4 @@
-VERSION = "Version 1.4.23"
+VERSION = "Version 1.4.24"
 PROGRAMNAME = "BitBank BaiBai Bot (b5) "
 puts( PROGRAMNAME + VERSION )
 
@@ -69,7 +69,7 @@ class Trend
 			@delta = 0
 			return @delta
 		end
-		@price_history.push ( new_price )
+		@price_history.push ( iCoinPriceInfo )
 		@old_price = new_price
 		if @price_history.size == 1 then
 			@delta = 0
@@ -77,8 +77,8 @@ class Trend
 			@delta = 0
 		else
 			# @price_history.size==3
-			d1 = @price_history[1] - @price_history[0]
-			d2 = @price_history[2] - @price_history[1]
+			d1 = @price_history[1]['last'].to_f - @price_history[0]['last'].to_f
+			d2 = @price_history[2]['last'].to_f - @price_history[1]['last'].to_f
 			if d2<=0 then
 				@delta = 0
 			elsif d1>0 and d2>0 then
@@ -92,6 +92,9 @@ class Trend
 	end
 	def get_trend
 		return @delta
+	end
+	def get_last_price
+		return @price_history.last
 	end
 end
 
@@ -613,13 +616,12 @@ class OnePairBaiBai
 
 		# 販売予定価格(購入価格の1.001倍)より、市場販売価格(の0.999倍)のほうが高ければ、市場販売価格市場販売価格(の0.999倍)にする。つまり、高く売る。
 		# (販売価格 = 市場価格÷1.001 if 購入価格×1.01<市場価格÷1.01)
-		market_price = @coinPrice["sell"].to_f / @@magnification
+		market_price = @@trend[@targetPair].get_last_price()["sell"].to_f / @@magnification
 		if @targetSellPrice < market_price then		
+			puts("販売価格を市場価格に更新:" + @targetSellPrice.to_s + "->" + market_price.to_s + "[" + (market_price-@targetSellPrice).to_s + "]") if iDisp
 			@targetSellPrice = market_price
-			puts("販売価格を市場価格に更新:" +  + @targetSellPrice.to_s) if iDisp
 		end
 		# print(" " + @targetSellPrice.to_s) if iDisp
-		
 
 		#正常終了したので、次の状態へ
 		@currentStatus.next()
