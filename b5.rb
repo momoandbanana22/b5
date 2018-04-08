@@ -1,4 +1,4 @@
-VERSION = "Version 1.4.25"
+VERSION = "Version 1.4.26"
 PROGRAMNAME = "BitBank BaiBai Bot (b5) "
 puts( PROGRAMNAME + VERSION )
 
@@ -322,7 +322,7 @@ class OnePairBaiBai
 	#################
 	def getMyAmout(iDisp)
 		print( DateTime.now ) if iDisp # 現在日時表示
-		print(" " + self.object_id.to_s) # オブジェクトIDを表示
+		print(" " + self.object_id.to_s) if iDisp # オブジェクトIDを表示
 		print(" " + @targetPair) if iDisp # ペア名表示
 		print(" " + "残高情報取得") if iDisp
 		@@log.debug(self.object_id,self.class.name,__method__,@targetPair)
@@ -361,14 +361,11 @@ class OnePairBaiBai
 		puts(" 成功" + "\r\n") if iDisp
 	end
 
-	###################
-	# 現在の価格を取得
-	###################
-	def getPrice(iDisp)
+	def rawGetPrive(iDisp)
 		# たとえばamout['jpy']['free_amount']ってやれば、JPYの（使用可能)残高がわかる、二次元ハッシュを用意
 		@coinPrice = {} #Hash.new { |h,k| h[k] = {} }
 		print( DateTime.now ) if iDisp # 現在日時表示
-		print(" " + self.object_id.to_s) # オブジェクトIDを表示
+		print(" " + self.object_id.to_s) if iDisp # オブジェクトIDを表示
 		print(" " + @targetPair) if iDisp # ペア名表示
 		print(" " + "価格情報取得") if iDisp
 		@@log.debug(self.object_id,self.class.name,__method__,@targetPair)
@@ -380,12 +377,12 @@ class OnePairBaiBai
 				errstr = "失敗:" + oneCoinPrice["data"]["code"].to_s
 				@@log.error(self.object_id,self.class.name,__method__,errstr)
 				puts(" " + errstr + "\r\n") if iDisp
-				return
+				return false
 			end
 		rescue => exception
 			@@log.fatal(self.object_id,self.class.name,__method__,exception.to_s)
 			puts(" 失敗:" + exception.to_s + "\r\n") if iDisp
-			return
+			return false
 		end
 			
 		# その通貨の価格情報をcoinPriceに格納する
@@ -399,13 +396,22 @@ class OnePairBaiBai
 		if @@trend[@targetPair].add_price_info(@coinPrice)<=0 then
 			# 価格が降下しているので、購入しない＝価格取得をやり直す
 			puts(" 価格降下中" + "\r\n") if iDisp
-			return
+			return false
 		end
 
 		#正常終了したので、次の状態へ
-		@currentStatus.next()
 		puts(" 成功" + "\r\n") if iDisp
-		calcBuyPrice(iDisp)
+		return true
+	end
+
+	###################
+	# 現在の価格を取得
+	###################
+	def getPrice(iDisp)
+		if rawGetPrive(iDisp) then
+			@currentStatus.next()
+			calcBuyPrice(iDisp)
+		end
 	end
 
 	#############################
@@ -472,7 +478,7 @@ class OnePairBaiBai
 	###########################
 	def orderBuy(iDisp)
 		print( DateTime.now ) if iDisp # 現在日時表示
-		print(" " + self.object_id.to_s) # オブジェクトIDを表示
+		print(" " + self.object_id.to_s) if iDisp # オブジェクトIDを表示
 		print(" " + @targetPair) if iDisp # ペア名表示
 		print(" " + "購入注文送信") if iDisp
 		@bbcc.randomWait()
@@ -606,6 +612,7 @@ class OnePairBaiBai
 	# 販売価格を計算して決定する
 	#############################
 	def calcSellPrice(iDisp)
+		rawGetPrive(false)
 		# print( DateTime.now ) if iDisp # 現在日時表示
 		# print(" " + self.object_id.to_s) # オブジェクトIDを表示
 		# print(" " + @targetPair) if iDisp # ペア名表示
@@ -656,7 +663,7 @@ class OnePairBaiBai
 	###########################
 	def orderSell(iDisp)
 		print( DateTime.now ) if iDisp # 現在日時表示
-		print(" " + self.object_id.to_s) # オブジェクトIDを表示
+		print(" " + self.object_id.to_s) if iDisp # オブジェクトIDを表示
 		print(" " + @targetPair) if iDisp # ペア名表示
 		print(" " + "販売注文送信") if iDisp
 		@bbcc.randomWait()
@@ -753,7 +760,7 @@ class OnePairBaiBai
 	###########
 	def dispProfits(iDisp)
 		print( DateTime.now ) if iDisp # 現在日時表示
-		print(" " + self.object_id.to_s) # オブジェクトIDを表示
+		print(" " + self.object_id.to_s) if iDisp # オブジェクトIDを表示
 		print(" " + @targetPair) if iDisp # ペア名表示
 		print(" " + "利益表示") if iDisp
 
