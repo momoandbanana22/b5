@@ -1,4 +1,4 @@
-VERSION = "Version 1.4.24"
+VERSION = "Version 1.4.25"
 PROGRAMNAME = "BitBank BaiBai Bot (b5) "
 puts( PROGRAMNAME + VERSION )
 
@@ -418,12 +418,12 @@ class OnePairBaiBai
 		# print(" " + "購入価格計算") if iDisp
 
 		# 購入価格を、現在の板の購入価格にする
-		@targetBuyPrice = @coinPrice["buy"].to_f
-		if ((Time.now.to_f * 1000).to_i % 10 >4) then
-			@targetBuyPrice = @targetBuyPrice * 1.0005
-		else
-			@targetBuyPrice = @targetBuyPrice / 1.001
-		end
+		@targetBuyPrice = (@coinPrice["buy"].to_f + @coinPrice["last"].to_f) / 2
+		#if ((Time.now.to_f * 1000).to_i % 10 >4) then
+		#	@targetBuyPrice = @targetBuyPrice * 1.0005
+		#else
+		#	@targetBuyPrice = @targetBuyPrice / 1.001
+		#end
 		# print(" " + @targetBuyPrice.to_s) if iDisp
 
 		#正常終了したので、次の状態へ
@@ -616,9 +616,12 @@ class OnePairBaiBai
 
 		# 販売予定価格(購入価格の1.001倍)より、市場販売価格(の0.999倍)のほうが高ければ、市場販売価格市場販売価格(の0.999倍)にする。つまり、高く売る。
 		# (販売価格 = 市場価格÷1.001 if 購入価格×1.01<市場価格÷1.01)
-		market_price = @@trend[@targetPair].get_last_price()["sell"].to_f / @@magnification
-		if @targetSellPrice < market_price then		
-			puts("販売価格を市場価格に更新:" + @targetSellPrice.to_s + "->" + market_price.to_s + "[" + (market_price-@targetSellPrice).to_s + "]") if iDisp
+		market_price = ( @@trend[@targetPair].get_last_price()["sell"].to_f + @@trend[@targetPair].get_last_price()["last"].to_f ) / 2 / @@magnification
+		if @targetSellPrice < market_price then
+			diff = market_price - @targetSellPrice
+			diff = diff * 0.9
+			market_price = @targetSellPrice + diff
+			puts("販売価格を市場価格に更新:" + @targetSellPrice.to_s + "->" + market_price.to_s + " [" + diff.to_s + "]") if iDisp
 			@targetSellPrice = market_price
 		end
 		# print(" " + @targetSellPrice.to_s) if iDisp
@@ -668,7 +671,7 @@ class OnePairBaiBai
 				errcode = errcode.to_i
 				if errcode > 60000 then
 					# @@log.debug(self.object_id,self.class.name,__method__,"GET_PRICEへ移動")
-					@currentStatus.setCurrentStatus(StatusValues::GET_PRICE)
+					# @currentStatus.setCurrentStatus(StatusValues::GET_PRICE)
 				end
 				return
 			end
@@ -719,9 +722,13 @@ class OnePairBaiBai
 				if errcode > 50000 then
 					# 注文が存在しない or 注文キャンセルできない → リトライカウンタをリセットして購入約定待へ
 					# @@log.debug(self.object_id,self.class.name,__method__,"WAIT_BUYへ移動")
-					@myBuyOrderWaitCount = 0
-					@mySellOrderWaitCount = 0
-					@currentStatus.setCurrentStatus(StatusValues::WAIT_BUY)
+					if iOrder["side"] == "buy" then
+						@myBuyOrderWaitCount = 0
+						@currentStatus.setCurrentStatus(StatusValues::WAIT_BUY)
+					else
+						@mySellOrderWaitCount = 0
+						@currentStatus.setCurrentStatus(StatusValues::WAIT_SELL)
+					end
 				end
 				puts(dispStr) if iDisp
 				return
