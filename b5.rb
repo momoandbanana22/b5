@@ -1,4 +1,4 @@
-VERSION = "Version 1.4.26"
+VERSION = "Version 1.4.27"
 PROGRAMNAME = "BitBank BaiBai Bot (b5) "
 puts( PROGRAMNAME + VERSION )
 
@@ -870,12 +870,20 @@ OnePairBaiBai.slackPost (PROGRAMNAME + VERSION)
 baibaiDisp = true
 waitOrderDisp = false
 runningmode = true
+readsetting = false
 
 myBaiBaiThread = Thread.start {
 	while(true)
 		for oneBaibai in baibais do
 			oneBaibai.doBaibai(baibaiDisp,waitOrderDisp) if runningmode
 			exit(0) if $end_request
+		end
+		if readsetting==true then
+			for oneBaibai in baibais do
+				oneBaibai.readSetting
+				exit(0) if $end_request
+			end
+			readsetting = false
 		end
 	end
 }
@@ -908,6 +916,9 @@ class Bot
 					end
 				end
 				sendtext = sendtext + "・・・以上です"
+			when "readsetting"
+				sendtext = "設定ファイルを読み込みなおします。"
+				readsetting = true
 			when "exitprogram"
 				sendtext = "プログラムを終了します。"
 				$end_request = true
