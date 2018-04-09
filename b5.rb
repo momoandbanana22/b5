@@ -979,7 +979,7 @@ EOS
 		end
 		if $end_request then
 			sleep(5)
-			exit(0) # 止め方わからないので、矯正終了
+			exit(0) # 止め方わからないので、強制終了
 		end
 	end
 end
