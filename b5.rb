@@ -1,4 +1,4 @@
-VERSION = "Version 1.4.27"
+VERSION = "Version 1.4.28"
 PROGRAMNAME = "BitBank BaiBai Bot (b5) "
 puts( PROGRAMNAME + VERSION )
 
@@ -11,8 +11,6 @@ require 'logger'
 require 'slack-ruby-bot'
 
 require 'ruby_bitbankcc'
-
-$end_request = false
 
 # Bitbankccクラスにメソッドを追加する
 class Bitbankcc
@@ -238,6 +236,9 @@ class OnePairBaiBai
 		# 最大販売待ち回数
 		@sellOrderWaitMaxRetry = 10
 
+		# （前回の）待状態
+		@oldWait = false
+
 		# ログクラスを保存
 		@@log = iLog
 
@@ -279,7 +280,7 @@ class OnePairBaiBai
 	end
 
 	# 現在の状態に応じた処理を実行する
-	def doBaibai(iDisp,iWaitOrderDisp)
+	def doBaibai(iDisp,iWaitOrderDisp,iToWait)
 		case @currentStatus.getCurrentStatus()
 		when StatusValues::INITSTATUS			# 初期状態
 			# @@@@@ puts("すべての注文が無くなるまで待つ")
@@ -287,7 +288,17 @@ class OnePairBaiBai
 			# @@@@@ puts("すべての注文が無くなりました!")
 			@currentStatus.next()
 		when StatusValues::GET_MYAMOUT			# 残高取得中
-			getMyAmout(iDisp)
+			if iToWait != @oldWait then
+				# 状態変化したとき（よし→まて or まて→よし）
+				print( DateTime.now ) if iDisp # 現在日時表示
+				print(" " + self.object_id.to_s) if iDisp # オブジェクトIDを表示
+				print(" " + @targetPair) if iDisp # ペア名表示
+				print(" " + "残高情報取得") if iDisp
+				puts(" " + " wait is " + iToWait.to_s) if iDisp
+				@@log.debug(self.object_id,self.class.name,__method__,@targetPair + " wait is " + iToWait.to_s)
+			end
+			getMyAmout(iDisp) unless iToWait # 待指示でなければ実行
+			@oldWait = iToWait
 		when StatusValues::GET_PRICE			# 現在価格取得
 			getPrice(iDisp)
 		when StatusValues::CALC_BUYPRICE		# 購入価格計算
@@ -867,23 +878,25 @@ end
 # プログラム名をslackに表示（起動通知）
 OnePairBaiBai.slackPost (PROGRAMNAME + VERSION)
 
-baibaiDisp = true
-waitOrderDisp = false
-runningmode = true
-readsetting = false
+$end_request = false
+$baibaiDisp = true
+$waitOrderDisp = false
+$runningmode = true
+$readsetting = false
+$towait = false
 
 myBaiBaiThread = Thread.start {
 	while(true)
 		for oneBaibai in baibais do
-			oneBaibai.doBaibai(baibaiDisp,waitOrderDisp) if runningmode
-			exit(0) if $end_request
+			oneBaibai.doBaibai($baibaiDisp,$waitOrderDisp,$towait) if $runningmode
+			break if $end_request
 		end
-		if readsetting==true then
+		if $readsetting==true then
 			for oneBaibai in baibais do
 				oneBaibai.readSetting
-				exit(0) if $end_request
+				break if $end_request
 			end
-			readsetting = false
+			$readsetting = false
 		end
 	end
 }
@@ -916,16 +929,43 @@ class Bot
 					end
 				end
 				sendtext = sendtext + "・・・以上です"
+			when "countagents"
+				sendtext = "現在のエージェント数は" + @baibais.size.to_s + "です。"
 			when "readsetting"
 				sendtext = "設定ファイルを読み込みなおします。"
-				readsetting = true
+				begin
+					client.say(text: sendtext, channel: data.channel)
+				rescue Exception => e
+				end
+				$readsetting = true
+				while $readsetting
+					sleep(1)
+				end
+				sendtext = "設定ファイルを読み込みなおしました！"
+			when "towait"
+  				sendtext = "販売できたら、待に入ります。"
+				$towait = true
+			when "not towait"
+				sendtext = "再開します"
+				$towait = false
 			when "exitprogram"
 				sendtext = "プログラムを終了します。"
 				$end_request = true
 			when "version"
 				sendtext = PROGRAMNAME + VERSION
 			when "help"
-				sendtext = "add btc_jpy\ndispallprofits\ndispwaitorders\nexitprogram\nversion\nhelp"
+				sendtext = <<-EOS
+add btc_jpy
+dispallprofits
+dispwaitorders
+countagents
+readsetting
+towait
+not towait
+exitprogram
+version
+help
+EOS
 			else
 				sendtext = eval(inputcommand)
 			end
@@ -939,7 +979,7 @@ class Bot
 		end
 		if $end_request then
 			sleep(5)
-			exit(0)
+			exit(0) # 止め方わからないので、矯正終了
 		end
 	end
 end
