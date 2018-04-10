@@ -1,4 +1,4 @@
-VERSION = "Version 1.4.28"
+VERSION = "Version 1.4.28.1"
 PROGRAMNAME = "BitBank BaiBai Bot (b5) "
 puts( PROGRAMNAME + VERSION )
 
@@ -491,7 +491,7 @@ class OnePairBaiBai
 		print( DateTime.now ) if iDisp # 現在日時表示
 		print(" " + self.object_id.to_s) if iDisp # オブジェクトIDを表示
 		print(" " + @targetPair) if iDisp # ペア名表示
-		print(" " + "購入注文送信") if iDisp
+		print(" " + "buy_注文送信") if iDisp
 		@bbcc.randomWait()
 
 		begin
@@ -639,7 +639,7 @@ class OnePairBaiBai
 			diff = market_price - @targetSellPrice
 			diff = diff * 0.9
 			market_price = @targetSellPrice + diff
-			puts("販売価格を市場価格に更新:" + @targetSellPrice.to_s + "->" + market_price.to_s + " [" + diff.to_s + "]") if iDisp
+			puts("sell価格を市場価格に更新:" + @targetSellPrice.to_s + "->" + market_price.to_s + " [" + diff.to_s + "]") if iDisp
 			@targetSellPrice = market_price
 		end
 		# print(" " + @targetSellPrice.to_s) if iDisp
@@ -676,7 +676,7 @@ class OnePairBaiBai
 		print( DateTime.now ) if iDisp # 現在日時表示
 		print(" " + self.object_id.to_s) if iDisp # オブジェクトIDを表示
 		print(" " + @targetPair) if iDisp # ペア名表示
-		print(" " + "販売注文送信") if iDisp
+		print(" " + "sell注文送信") if iDisp
 		@bbcc.randomWait()
 
 		begin
@@ -884,9 +884,11 @@ $waitOrderDisp = false
 $runningmode = true
 $readsetting = false
 $towait = false
+$showlooptop = true
 
 myBaiBaiThread = Thread.start {
 	while(true)
+		puts("-----") if $showlooptop
 		for oneBaibai in baibais do
 			oneBaibai.doBaibai($baibaiDisp,$waitOrderDisp,$towait) if $runningmode
 			break if $end_request
@@ -948,6 +950,9 @@ class Bot
 			when "not towait"
 				sendtext = "再開します"
 				$towait = false
+			when "sw showlooptop"
+				$showlooptop = (not $showlooptop)
+				sendtext = "showlooptopを" + $showlooptop.to_s + "に切り替えました"
 			when "exitprogram"
 				sendtext = "プログラムを終了します。"
 				$end_request = true
@@ -962,6 +967,7 @@ countagents
 readsetting
 towait
 not towait
+sw showlooptop
 exitprogram
 version
 help
