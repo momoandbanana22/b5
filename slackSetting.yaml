@@ -1,0 +1,8 @@
+# ↓slackに関する設定
+slack:
+  use: false
+# ↑slack通知を使うかどうか true/false
+  webhookURL: "https://hooks.slack.com/services/XXXXXXXXX/XXXXXXXXX/XXXXXXXXXXXXXXXXXXXXXXXX"
+# ↑slackの通知のWebhook URL
+  botAPItoken: "xoxb-XXXXXXXXXXXX-XXXXXXXXXXXXXXXXXXXXXXXX"
+# ↑slackのボットのAPI Token

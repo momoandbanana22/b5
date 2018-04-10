@@ -1,4 +1,4 @@
-VERSION = "Version 1.4.29"
+VERSION = "Version 1.5.0"
 PROGRAMNAME = "BitBank BaiBai Bot (b5) "
 puts( PROGRAMNAME + VERSION )
 
@@ -233,8 +233,23 @@ class OnePairBaiBai
 		# 最大販売待ち回数
 		@sellOrderWaitMaxRetry = 10
 
-		# （前回の）待状態
-		@oldWait = false
+		# （前回の）購入待状態
+		@oldBuyWait = false
+
+		# （現在の）購入待状態
+		@isBuyWait = false
+		def isBuyWait
+			return @isBuyWait
+		end
+
+		# （前回の）販売待状態
+		@oldSellWait = false
+
+		# （現在の）販売待状態
+		@isSellWait = false
+		def isSellWait
+			return @isSellWait
+		end
 
 		# ログクラスを保存
 		@@log = iLog
@@ -248,16 +263,22 @@ class OnePairBaiBai
 		end
 	end
 
+	# 設定ファイル読み込み
 	def readSetting
 		setting = YAML.load_file("setting.yaml")
 		@@amountJPYtoPurchaseAtOneTime	= setting["amountJPYtoPurchaseAtOneTime"].to_f
 		@@amountBTCtoPurchaseAtOneTime	= setting["amountBTCtoPurchaseAtOneTime"].to_f
-		@@magnification					= setting["magnification"].to_f
-		@buyOrderWaitMaxRetry			= setting["buyOrderWaitMaxRetry"].to_i
-		@sellOrderWaitMaxRetry			= setting["sellOrderWaitMaxRetry"].to_i
-		@@slackUse = setting["slack"]["use"]
+		@@magnification									= setting["magnification"].to_f
+		@buyOrderWaitMaxRetry						= setting["buyOrderWaitMaxRetry"].to_i
+		@sellOrderWaitMaxRetry					= setting["sellOrderWaitMaxRetry"].to_i
+		@highGrab												= setting["highGrab"]
+		@releaseMaxCount								= setting["releaseMaxCount"]
+		@releaseCount										= 0
+
+		slackSetting = YAML.load_file("slackSetting.yaml")
+		@@slackUse = slackSetting["slack"]["use"]
 		if @@slackUse then
-			@@slack = Slack::Incoming::Webhooks.new setting["slack"]["webhookURL"]
+			@@slack = Slack::Incoming::Webhooks.new slackSetting["slack"]["webhookURL"]
 		end
 	end
 
@@ -277,7 +298,7 @@ class OnePairBaiBai
 	end
 
 	# 現在の状態に応じた処理を実行する
-	def doBaibai(iDisp,iWaitOrderDisp,iToWait)
+	def doBaibai(iDisp,iWaitOrderDisp,iBuyWait,iSellWait)
 		case @currentStatus.getCurrentStatus()
 		when StatusValues::INITSTATUS			# 初期状態
 			# @@@@@ puts("すべての注文が無くなるまで待つ")
@@ -285,17 +306,18 @@ class OnePairBaiBai
 			# @@@@@ puts("すべての注文が無くなりました!")
 			@currentStatus.next()
 		when StatusValues::GET_MYAMOUT			# 残高取得中
-			if iToWait != @oldWait then
+			if iBuyWait != @oldBuyWait then
 				# 状態変化したとき（よし→まて or まて→よし）
 				print( DateTime.now ) if iDisp # 現在日時表示
 				print(" " + self.object_id.to_s) if iDisp # オブジェクトIDを表示
 				print(" " + @targetPair) if iDisp # ペア名表示
 				print(" " + "残高情報取得") if iDisp
-				puts(" " + " wait is " + iToWait.to_s) if iDisp
-				@@log.debug(self.object_id,self.class.name,__method__,@targetPair + " wait is " + iToWait.to_s)
+				puts(" " + " wait is " + iBuyWait.to_s) if iDisp
+				@@log.debug(self.object_id,self.class.name,__method__,@targetPair + " buy wait is " + iToWait.to_s)
+				@isBuyWait = iBuyWait
 			end
-			getMyAmout(iDisp) unless iToWait # 待指示でなければ実行
-			@oldWait = iToWait
+			getMyAmout(iDisp) unless iBuyWait # 待指示でなければ実行
+			@oldBuyWait = iBuyWait
 		when StatusValues::GET_PRICE			# 現在価格取得
 			getPrice(iDisp)
 		when StatusValues::CALC_BUYPRICE		# 購入価格計算
@@ -313,7 +335,18 @@ class OnePairBaiBai
 		when StatusValues::ORDER_SELL			# 発注(販売)
 			orderSell(iDisp)
 		when StatusValues::WAIT_SELL			# 販売約定待ち
-			waitOrder(iDisp,iWaitOrderDisp,@mySellOrderInfo)
+			if iSellWait != @oldSellWait then
+				# 状態変換したとき
+				print( DateTime.now ) if iDisp # 現在日時表示
+				print(" " + self.object_id.to_s) if iDisp # オブジェクトIDを表示
+				print(" " + @targetPair) if iDisp # ペア名表示
+				print(" " + @mySellOrderInfo['side'].to_s + "注文完了待機") if iDisp
+				puts(" " + " wait is " + iSellWait.to_s) if iDisp
+				@@log.debug(self.object_id,self.class.name,__method__,@targetPair + " sell wait is " + iToWait.to_s)
+				@isSellWait = iSellWait
+			end
+			waitOrder(iDisp,iWaitOrderDisp,@mySellOrderInfo) unless iSellWait # 待指示でなければ実行
+			@oldSellWait = iSellWait
 		when StatusValues::DISP_PROFITS			# 利益表示
 			dispProfits(iDisp)
 		when StatusValues::CANSEL_BUYORDER		# 購入注文中断
@@ -549,7 +582,23 @@ class OnePairBaiBai
 			end
 			@myBuyOrderWaitCount = @myBuyOrderWaitCount + 1
 		elsif side == "sell" then
-			if @mySellOrderWaitCount>@sellOrderWaitMaxRetry then 
+			if @mySellOrderWaitCount>@sellOrderWaitMaxRetry then
+				if @releaseCount<@releaseMaxCount then
+					# 「手放し」してもよい回数のとき
+					if @targetSellPrice * @highGrab > @@trend[@targetPair].get_last_price()["last"].to_f then
+						# 売りたい値段 * 率 > 販売価格 なら、手放して、次の売買へ移る。
+						tmp = "失敗:高掴み。売希望：" + @targetSellPrice.to_s + " 市場：" + @@trend[@targetPair].get_last_price()["last"].to_s
+						dispStr = dispStr + " " + tmp + "\r\n"
+						puts(dispStr) if (iDisp)
+						@releaseCount += 1
+						@currentStatus.setCurrentStatus(StatusValues::GET_MYAMOUT)
+						@@log.debug(self.object_id,self.class.name,__method__,@targetPair.to_s + " " + tmp)
+						return
+					end
+				else
+					# 高掴み手放し上限
+					dispStr = dispStr + " " + "高掴み手放し上限"
+				end
 				@currentStatus.setCurrentStatus(StatusValues::CANSEL_SELLORDER)
 				dispStr = dispStr + " " + "失敗:リトライアウト" + "\r\n"
 				puts(dispStr) if (iDisp && iWaitOrdeDisp)
@@ -872,6 +921,7 @@ end
 
 # 設定ファイル読み込み
 setting = YAML.load_file("setting.yaml")
+slackSetting = YAML.load_file("slackSetting.yaml")
 
 # ログクラスを作成
 log = MyLog.new(setting["log"]["filepath"])
@@ -901,14 +951,15 @@ $baibaiDisp = true
 $waitOrderDisp = false
 $runningmode = true
 $readsetting = false
-$towait = false
+$toBuyWait = false
+$toSellWait = false
 $showlooptop = true
 
 myBaiBaiThread = Thread.start {
 	while(true)
 		puts("-----") if $showlooptop
 		for oneBaibai in baibais do
-			oneBaibai.doBaibai($baibaiDisp,$waitOrderDisp,$towait) if $runningmode
+			oneBaibai.doBaibai($baibaiDisp,$waitOrderDisp,$toBuyWait,$toSellWait) if $runningmode
 			break if $end_request
 		end
 		if $readsetting==true then
@@ -948,7 +999,7 @@ class Bot
 						sendtext = sendtext + tmp + "\n"
 					end
 				end
-				sendtext = sendtext + "・・・以上です"
+				sendtext = sendtext + "・・・以上です。"
 			when "countagents"
 				sendtext = "現在のエージェント数は" + @baibais.size.to_s + "です。"
 			when "readsetting"
@@ -964,13 +1015,25 @@ class Bot
 				sendtext = "設定ファイルを読み込みなおしました！"
 			when "towait"
   				sendtext = "販売できたら、待に入ります。"
-				$towait = true
+				$toBuyWait = true
 			when "not towait"
 				sendtext = "再開します"
-				$towait = false
+				$toBuyWait = false
 			when "sw showlooptop"
 				$showlooptop = (not $showlooptop)
-				sendtext = "showlooptopを" + $showlooptop.to_s + "に切り替えました"
+				sendtext = "showlooptopを" + $showlooptop.to_s + "に切り替えました。"
+			when "dispbuywait"
+				cnt = 0
+				for oneBaibai in baibais do
+					cnt +=1 if oneBaibai.isBuyWait
+				end
+				sendtext = "購入前待状態のエージェント数は" + cnt.to_s + "です。"
+			when "dispsellwait"
+				cnt = 0
+				for oneBaibai in baibais do
+					cnt +=1 if oneBaibai.isSellWait
+				end
+				sendtext = "販売約定待状態のエージェント数は" + cnt.to_s + "です。"
 			when "exitprogram"
 				sendtext = "プログラムを終了します。"
 				$end_request = true
@@ -986,6 +1049,8 @@ readsetting
 towait
 not towait
 sw showlooptop
+dispbuywait
+dispsellwait
 exitprogram
 version
 help
@@ -1009,9 +1074,16 @@ EOS
 end
 
 server = SlackRubyBot::Server.new(
-  token: setting["slack"]["botAPItoken"],
-  hook_handlers: {
-    message: Bot.new(baibais, bbcc, log)
-  }
+	token: slackSetting["slack"]["botAPItoken"],
+	hook_handlers: {
+		message: Bot.new(baibais, bbcc, log)
+	}
 )
-server.run
+
+if slackSetting['slack']['use'] then
+	server.run
+else
+	loop do
+		sleep(1)
+	end
+end
