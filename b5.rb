@@ -1,4 +1,4 @@
-VERSION = "Version 1.4.28.1"
+VERSION = "Version 1.4.29"
 PROGRAMNAME = "BitBank BaiBai Bot (b5) "
 puts( PROGRAMNAME + VERSION )
 
@@ -99,9 +99,6 @@ end
 class OnePairBaiBai
 	# BitBank.cc で取り扱っているコインペアの一覧
 	BBCC_COIN_PAIR_NAMES = ["btc_jpy", "xrp_jpy", "ltc_btc", "eth_btc", "mona_jpy", "mona_btc", "bcc_jpy", "bcc_btc"]
-
-	# 全体の利益
-	@@totalProfits = { "btc" => 0, "jpy" => 0 }
 
 	# トレンドを初期化
 	@@trend = {}
@@ -782,11 +779,11 @@ class OnePairBaiBai
 		currentProfits = @mySellOrderInfo["price"].to_f * @mySellOrderInfo["start_amount"].to_f - @myBuyOrderInfo["price"].to_f * @myBuyOrderInfo["start_amount"].to_f
 
 		# 合計利益を計算
-		@@totalProfits[unitName] = @@totalProfits[unitName].to_f + currentProfits
+		OnePairBaiBai.add_profit(unitName, currentProfits)
 
 		# 表示
 		# dispStr = "今回売買:" + currentProfits.to_s + " ###合計利益:" + @@totalProfits[unitName].to_s + " " + unitName.to_s
-		dispStr = "合計:" + @@totalProfits[unitName].to_s + " " + unitName.to_s + " 今回:" + currentProfits.to_s 
+		dispStr = "合計:" + OnePairBaiBai.getTotalProfits()[unitName].to_s + " " + unitName.to_s + " 今回:" + currentProfits.to_s 
 		print(" " + dispStr + "\r\n") if iDisp
 
 		# ログへ記録
@@ -800,11 +797,32 @@ class OnePairBaiBai
 		return
 	end
 
+	TOTAL_PROFITS_FILENAME = 'total_profits.yaml'
+
+	#######################################################
+	# 指定通貨の利益を更新（加算）するスタティックメソッド
+	#######################################################
+	def self.add_profit(unite_name, profit)
+		total_profits = OnePairBaiBai.getTotalProfits()
+		if total_profits[unite_name].nil? then
+			total_profits[unite_name] = profit
+		else
+			total_profits[unite_name] = total_profits[unite_name].to_f + profit
+		end
+		File.open(TOTAL_PROFITS_FILENAME,'w') do |f|
+			YAML.dump(total_profits, f)
+		end
+	end
+
 	###################################
 	# 全利益を返すスタティックメソッド
 	###################################
 	def self.getTotalProfits()
-		return @@totalProfits
+		begin
+			total_profits = YAML.load_file(TOTAL_PROFITS_FILENAME)
+		rescue => e
+			puts e
+		end
 	end
 
 	def get_waiting_order
