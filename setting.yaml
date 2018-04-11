@@ -10,7 +10,7 @@ magnification: 1.0012
 buyOrderWaitMaxRetry: 1
 # ↑最大購入待ち回数
 
-sellOrderWaitMaxRetry: 2
+sellOrderWaitMaxRetry: 3
 # ↑最大販売待ち回数
 
 targetBaiBailist: ["btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy"]
@@ -18,10 +18,10 @@ targetBaiBailist: ["btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy","
 # ↑売買を行う通貨ペアを指定する
 
 # 購入価格*higiGrab>市場価格となったら、高掴みと判断する
-highGrab: 0.99
+highGrab: 0.995
 
 # 高掴みになったものを手放して、売買をやり直す回数。（つまり、資金は、１エージェントあたり、amountJPYtoPurchaseAtOneTime*(releaseMaxCount+1)必要となる。
-releaseMaxCount: 2
+releaseMaxCount: 100
 # ↑
 
 # ↓logに関する設定

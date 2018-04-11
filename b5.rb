@@ -1,4 +1,4 @@
-VERSION = "Version 1.5.0"
+VERSION = "Version 1.5.1"
 PROGRAMNAME = "BitBank BaiBai Bot (b5) "
 puts( PROGRAMNAME + VERSION )
 
@@ -282,6 +282,14 @@ class OnePairBaiBai
 		end
 	end
 
+	# 高掴み開放を何回行ったか？
+	def releaseCount
+		@releaseCount
+	end
+	def releaseCount=(newValue)
+		@releaseCount = newValue
+	end
+
 	# slack通知を送信する
 	def self.slackPost(iMsg)
 		if @@slackUse then
@@ -313,7 +321,7 @@ class OnePairBaiBai
 				print(" " + @targetPair) if iDisp # ペア名表示
 				print(" " + "残高情報取得") if iDisp
 				puts(" " + " wait is " + iBuyWait.to_s) if iDisp
-				@@log.debug(self.object_id,self.class.name,__method__,@targetPair + " buy wait is " + iToWait.to_s)
+				@@log.debug(self.object_id,self.class.name,__method__,@targetPair + " buy wait is " + iBuyWait.to_s)
 				@isBuyWait = iBuyWait
 			end
 			getMyAmout(iDisp) unless iBuyWait # 待指示でなければ実行
@@ -342,7 +350,7 @@ class OnePairBaiBai
 				print(" " + @targetPair) if iDisp # ペア名表示
 				print(" " + @mySellOrderInfo['side'].to_s + "注文完了待機") if iDisp
 				puts(" " + " wait is " + iSellWait.to_s) if iDisp
-				@@log.debug(self.object_id,self.class.name,__method__,@targetPair + " sell wait is " + iToWait.to_s)
+				@@log.debug(self.object_id,self.class.name,__method__,@targetPair + " sell wait is " + iSellWait.to_s)
 				@isSellWait = iSellWait
 			end
 			waitOrder(iDisp,iWaitOrderDisp,@mySellOrderInfo) unless iSellWait # 待指示でなければ実行
@@ -572,41 +580,6 @@ class OnePairBaiBai
 		dispStr = dispStr + " " + @targetPair.to_s # print(" " + @targetPair) if iDisp # ペア名表示
 		side = iOrder["side"].to_s
 		dispStr = dispStr + " " + side + "注文完了待機" # print(" " + "注文完了待機") if iDisp
-
-		if side == "buy" then
-			if @myBuyOrderWaitCount>@buyOrderWaitMaxRetry then 
-				@currentStatus.setCurrentStatus(StatusValues::CANSEL_BUYORDER)
-				dispStr = dispStr + " " + "失敗:リトライアウト" + "\r\n"
-				puts(dispStr) if (iDisp && iWaitOrdeDisp)
-				return
-			end
-			@myBuyOrderWaitCount = @myBuyOrderWaitCount + 1
-		elsif side == "sell" then
-			if @mySellOrderWaitCount>@sellOrderWaitMaxRetry then
-				if @releaseCount<@releaseMaxCount then
-					# 「手放し」してもよい回数のとき
-					if @targetSellPrice * @highGrab > @@trend[@targetPair].get_last_price()["last"].to_f then
-						# 売りたい値段 * 率 > 販売価格 なら、手放して、次の売買へ移る。
-						tmp = "失敗:高掴み。売希望：" + @targetSellPrice.to_s + " 市場：" + @@trend[@targetPair].get_last_price()["last"].to_s
-						dispStr = dispStr + " " + tmp + "\r\n"
-						puts(dispStr) if (iDisp)
-						@releaseCount += 1
-						@currentStatus.setCurrentStatus(StatusValues::GET_MYAMOUT)
-						@@log.debug(self.object_id,self.class.name,__method__,@targetPair.to_s + " " + tmp)
-						return
-					end
-				else
-					# 高掴み手放し上限
-					dispStr = dispStr + " " + "高掴み手放し上限"
-				end
-				@currentStatus.setCurrentStatus(StatusValues::CANSEL_SELLORDER)
-				dispStr = dispStr + " " + "失敗:リトライアウト" + "\r\n"
-				puts(dispStr) if (iDisp && iWaitOrdeDisp)
-				return
-			end
-			@mySellOrderWaitCount = @mySellOrderWaitCount + 1
-		end
-
 		@bbcc.randomWait()
 
 		begin
@@ -661,6 +634,39 @@ class OnePairBaiBai
 			return
 		end
 		# まだ注文が約定していない
+		if side == "buy" then
+			if @myBuyOrderWaitCount>@buyOrderWaitMaxRetry then 
+				@currentStatus.setCurrentStatus(StatusValues::CANSEL_BUYORDER)
+				dispStr = dispStr + " " + "失敗:リトライアウト" + "\r\n"
+				puts(dispStr) if (iDisp && iWaitOrdeDisp)
+				return
+			end
+			@myBuyOrderWaitCount = @myBuyOrderWaitCount + 1
+		elsif side == "sell" then
+			if @mySellOrderWaitCount>@sellOrderWaitMaxRetry then
+				if @releaseCount<@releaseMaxCount then
+					# 「手放し」してもよい回数のとき
+					if @targetSellPrice * @highGrab > @@trend[@targetPair].get_last_price()["last"].to_f then
+						# 売りたい値段 * 率 > 販売価格 なら、手放して、次の売買へ移る。
+						tmp = "失敗:高掴み。売希望：" + @targetSellPrice.to_s + " 市場：" + @@trend[@targetPair].get_last_price()["last"].to_s
+						dispStr = dispStr + " " + tmp + "\r\n"
+						puts(dispStr) if (iDisp)
+						@releaseCount += 1
+						@currentStatus.setCurrentStatus(StatusValues::GET_MYAMOUT)
+						@@log.debug(self.object_id,self.class.name,__method__,@targetPair.to_s + " " + tmp)
+						return
+					end
+				else
+					# 高掴み手放し上限
+					dispStr = dispStr + " " + "高掴み手放し上限"
+				end
+				@currentStatus.setCurrentStatus(StatusValues::CANSEL_SELLORDER)
+				dispStr = dispStr + " " + "失敗:リトライアウト" + "\r\n"
+				puts(dispStr) if (iDisp && iWaitOrdeDisp)
+				return
+			end
+			@mySellOrderWaitCount = @mySellOrderWaitCount + 1
+		end
 		dispStr = dispStr + " " + "成功" + "\r\n" # puts(" 成功" + "\r\n") if iDisp
 		puts(dispStr) if (iDisp && iWaitOrdeDisp)
 	end
@@ -1013,27 +1019,39 @@ class Bot
 					sleep(1)
 				end
 				sendtext = "設定ファイルを読み込みなおしました！"
-			when "towait"
-  				sendtext = "販売できたら、待に入ります。"
+			when "tobuywait"
+  			sendtext = "販売できたら、待に入ります。"
 				$toBuyWait = true
-			when "not towait"
+			when "not tobuywait"
 				sendtext = "再開します"
 				$toBuyWait = false
+			when "tosellwait"
+  			sendtext = "売注文出したら、待に入ります。"
+				$toSellWait = true
+			when "not tosellwait"
+				sendtext = "再開します"
+				$toSellWait = false
 			when "sw showlooptop"
 				$showlooptop = (not $showlooptop)
 				sendtext = "showlooptopを" + $showlooptop.to_s + "に切り替えました。"
 			when "dispbuywait"
 				cnt = 0
-				for oneBaibai in baibais do
+				for oneBaibai in @baibais do
 					cnt +=1 if oneBaibai.isBuyWait
 				end
 				sendtext = "購入前待状態のエージェント数は" + cnt.to_s + "です。"
 			when "dispsellwait"
 				cnt = 0
-				for oneBaibai in baibais do
+				for oneBaibai in @baibais do
 					cnt +=1 if oneBaibai.isSellWait
 				end
 				sendtext = "販売約定待状態のエージェント数は" + cnt.to_s + "です。"
+			when "dispreleasecount"
+				sendtext = "開放回数は、\r\n"
+				for oneBaibai in @baibais do
+					sendtext += oneBaibai.releaseCount().to_s + "\n"
+				end
+				sendtext += "・・・です。"
 			when "exitprogram"
 				sendtext = "プログラムを終了します。"
 				$end_request = true
@@ -1046,11 +1064,14 @@ dispallprofits
 dispwaitorders
 countagents
 readsetting
-towait
-not towait
+tobuywait
+not tobuywait
+tosellwait
+not tosellwait
 sw showlooptop
 dispbuywait
 dispsellwait
+dispreleasecount
 exitprogram
 version
 help
