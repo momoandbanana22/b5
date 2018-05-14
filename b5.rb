@@ -1,4 +1,4 @@
-VERSION = "Version 1.5.1"
+VERSION = "Version 1.5.2"
 PROGRAMNAME = "BitBank BaiBai Bot (b5) "
 puts( PROGRAMNAME + VERSION )
 
@@ -316,11 +316,11 @@ class OnePairBaiBai
 		when StatusValues::GET_MYAMOUT			# 残高取得中
 			if iBuyWait != @oldBuyWait then
 				# 状態変化したとき（よし→まて or まて→よし）
-				print( DateTime.now ) if iDisp # 現在日時表示
-				print(" " + self.object_id.to_s) if iDisp # オブジェクトIDを表示
-				print(" " + @targetPair) if iDisp # ペア名表示
-				print(" " + "残高情報取得") if iDisp
-				puts(" " + " wait is " + iBuyWait.to_s) if iDisp
+				# print( DateTime.now ) if iDisp # 現在日時表示
+				# print(" " + self.object_id.to_s) if iDisp # オブジェクトIDを表示
+				# print(" " + @targetPair) if iDisp # ペア名表示
+				# print(" " + "残高情報取得") if iDisp
+				# puts(" " + " wait is " + iBuyWait.to_s) if iDisp
 				@@log.debug(self.object_id,self.class.name,__method__,@targetPair + " buy wait is " + iBuyWait.to_s)
 				@isBuyWait = iBuyWait
 			end
@@ -370,10 +370,10 @@ class OnePairBaiBai
 	# 残高情報を取得
 	#################
 	def getMyAmout(iDisp)
-		print( DateTime.now ) if iDisp # 現在日時表示
-		print(" " + self.object_id.to_s) if iDisp # オブジェクトIDを表示
-		print(" " + @targetPair) if iDisp # ペア名表示
-		print(" " + "残高情報取得") if iDisp
+		# print( DateTime.now ) if iDisp # 現在日時表示
+		# print(" " + self.object_id.to_s) if iDisp # オブジェクトIDを表示
+		# print(" " + @targetPair) if iDisp # ペア名表示
+		# print(" " + "残高情報取得") if iDisp
 		@@log.debug(self.object_id,self.class.name,__method__,@targetPair)
 		@bbcc.randomWait()
 
@@ -382,12 +382,12 @@ class OnePairBaiBai
 			if balance["success"]!=1 then
 				errstr = "失敗:" + balance["data"]["code"].to_s
 				@@log.error(self.object_id,self.class.name,__method__,errstr)
-				puts(" " + errstr + "\r\n") if iDisp
+				# puts(" " + errstr + "\r\n") if iDisp
 				return
 			end
 		rescue => exception
 			@@log.fatal(self.object_id,self.class.name,__method__,exception.to_s)
-			puts(" 失敗:" + exception.to_s + "\r\n") if iDisp
+			# puts(" 失敗:" + exception.to_s + "\r\n") if iDisp
 			return
 		end
 
@@ -407,16 +407,16 @@ class OnePairBaiBai
 
 		#正常終了したので、次の状態へ
 		@currentStatus.next()
-		puts(" 成功" + "\r\n") if iDisp
+		# puts(" 成功" + "\r\n") if iDisp
 	end
 
 	def rawGetPrive(iDisp)
 		# たとえばamout['jpy']['free_amount']ってやれば、JPYの（使用可能)残高がわかる、二次元ハッシュを用意
 		@coinPrice = {} #Hash.new { |h,k| h[k] = {} }
-		print( DateTime.now ) if iDisp # 現在日時表示
-		print(" " + self.object_id.to_s) if iDisp # オブジェクトIDを表示
-		print(" " + @targetPair) if iDisp # ペア名表示
-		print(" " + "価格情報取得") if iDisp
+		# print( DateTime.now ) if iDisp # 現在日時表示
+		# print(" " + self.object_id.to_s) if iDisp # オブジェクトIDを表示
+		# print(" " + @targetPair) if iDisp # ペア名表示
+		# print(" " + "価格情報取得") if iDisp
 		@@log.debug(self.object_id,self.class.name,__method__,@targetPair)
 		@bbcc.randomWait()
 
@@ -425,12 +425,12 @@ class OnePairBaiBai
 			if oneCoinPrice["success"]!=1 then
 				errstr = "失敗:" + oneCoinPrice["data"]["code"].to_s
 				@@log.error(self.object_id,self.class.name,__method__,errstr)
-				puts(" " + errstr + "\r\n") if iDisp
+				# puts(" " + errstr + "\r\n") if iDisp
 				return false
 			end
 		rescue => exception
 			@@log.fatal(self.object_id,self.class.name,__method__,exception.to_s)
-			puts(" 失敗:" + exception.to_s + "\r\n") if iDisp
+			# puts(" 失敗:" + exception.to_s + "\r\n") if iDisp
 			return false
 		end
 			
@@ -444,12 +444,12 @@ class OnePairBaiBai
 		# 現在の価格情報を傾向管理クラスに渡す
 		if @@trend[@targetPair].add_price_info(@coinPrice)<=0 then
 			# 価格が降下しているので、購入しない＝価格取得をやり直す
-			puts(" 価格降下中" + "\r\n") if iDisp
+			# puts(" 価格降下中" + "\r\n") if iDisp
 			return false
 		end
 
 		#正常終了したので、次の状態へ
-		puts(" 成功" + "\r\n") if iDisp
+		# puts(" 成功" + "\r\n") if iDisp
 		return true
 	end
 
@@ -1031,6 +1031,10 @@ class Bot
 			when "not tosellwait"
 				sendtext = "再開します"
 				$toSellWait = false
+			when "tostop"
+				$toBuyWait = true
+				$toSellWait = true
+  			sendtext = "販売できたらor売注文出したら、待に入ります。"
 			when "sw showlooptop"
 				$showlooptop = (not $showlooptop)
 				sendtext = "showlooptopを" + $showlooptop.to_s + "に切り替えました。"
@@ -1068,6 +1072,7 @@ tobuywait
 not tobuywait
 tosellwait
 not tosellwait
+tostop(means tobuywait&tosellwait)
 sw showlooptop
 dispbuywait
 dispsellwait
