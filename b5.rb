@@ -1,4 +1,4 @@
-VERSION = "Version 1.5.2"
+VERSION = "Version 1.5.5"
 PROGRAMNAME = "BitBank BaiBai Bot (b5) "
 puts( PROGRAMNAME + VERSION )
 
@@ -526,20 +526,20 @@ class OnePairBaiBai
 	# 注文(購入)する
 	###########################
 	def orderBuy(iDisp)
-		print( DateTime.now ) if iDisp # 現在日時表示
-		print(" " + self.object_id.to_s) if iDisp # オブジェクトIDを表示
-		print(" " + @targetPair) if iDisp # ペア名表示
-		print(" " + "buy_注文送信") if iDisp
+		dispstr = DateTime.now.to_s # 現在日時表示
+		dispstr += ' ' + self.object_id.to_s # オブジェクトIDを表示
+		dispstr += ' ' + @targetPair # ペア名表示
+		dispstr += ' 買注文送信'
 		@bbcc.randomWait()
 
 		begin
 			buyOrderInfo = JSON.parse(@bbcc.create_order(@targetPair, @targetBuyAmount, @targetBuyPrice, "buy", "limit"))
 			if buyOrderInfo["success"]!=1 then
-				errstr = "失敗:" + buyOrderInfo["data"]["code"].to_s
-				@@log.error(self.object_id,self.class.name,__method__,errstr)
-				puts(" " + errstr + "\r\n") if iDisp
 				errcode = buyOrderInfo["data"]["code"]
 				errcode = errcode.to_i
+				errstr = "失敗:" + errcode.to_s
+				@@log.error(self.object_id,self.class.name,__method__,errstr)
+				puts(dispstr + ' ' + errstr + "\r\n") if iDisp && errcode != 60001
 				if errcode > 60000 then
 					# @@log.debug(self.object_id,self.class.name,__method__,"GET_PRICEへ移動")
 					@currentStatus.setCurrentStatus(StatusValues::GET_PRICE)
@@ -548,7 +548,7 @@ class OnePairBaiBai
 			end
 		rescue => exception
 			@@log.fatal(self.object_id,self.class.name,__method__,exception.to_s)
-			puts(" 失敗:" + exception.to_s + "\r\n") if iDisp
+			puts(dispstr + " 失敗:" + exception.to_s + "\r\n") if iDisp
 			return
 		end
 
@@ -566,7 +566,7 @@ class OnePairBaiBai
 		#正常終了したので、次の状態へ
 		@currentStatus.next()
 		dispmsg = "成功 数量:" + @targetBuyAmount.to_s + " 金額:" + @targetBuyPrice.to_s 
-		puts(" " + dispmsg + "\r\n") if iDisp
+		puts(dispstr + " " + dispmsg + "\r\n") if iDisp
 		@@log.debug(self.object_id,self.class.name,__method__,dispmsg)
 	end
 
@@ -607,7 +607,7 @@ class OnePairBaiBai
 						#正常終了したので、次の状態へ
 						@currentStatus.next()
 						dispStr = dispStr + " " + "成功 約定した。" + "\r\n" # puts(" 成功。約定した。" + "\r\n") if iDisp
-						puts(dispStr) if iDisp
+						# puts(dispStr) if iDisp
 						@@log.debug(self.object_id,self.class.name,__method__,"約定した。FULLY_FILLED")
 						return
 					end
@@ -629,7 +629,7 @@ class OnePairBaiBai
 			#正常終了したので、次の状態へ
 			@currentStatus.next()
 			dispStr = dispStr + " " + "成功 約定した。" + "\r\n" # puts(" 成功。約定した。" + "\r\n") if iDisp
-			puts(dispStr) if iDisp
+			# puts(dispStr) if iDisp
 			@@log.debug(self.object_id,self.class.name,__method__,"約定した。NO_ORDERINFO")
 			return
 		end
@@ -725,20 +725,20 @@ class OnePairBaiBai
 	# 注文(販売)する
 	###########################
 	def orderSell(iDisp)
-		print( DateTime.now ) if iDisp # 現在日時表示
-		print(" " + self.object_id.to_s) if iDisp # オブジェクトIDを表示
-		print(" " + @targetPair) if iDisp # ペア名表示
-		print(" " + "sell注文送信") if iDisp
+		dispstr = DateTime.now.to_s # 現在日時表示
+		dispstr += ' ' + self.object_id.to_s # オブジェクトIDを表示
+		dispstr += ' ' + @targetPair # ペア名表示
+		dispstr += ' 売注文送信'
 		@bbcc.randomWait()
 
 		begin
 			sellOrderInfo = JSON.parse(@bbcc.create_order(@targetPair, @targetSellAmount, @targetSellPrice, "sell", "limit"))
 			if sellOrderInfo["success"]!=1 then
-				errstr = "失敗:" + sellOrderInfo["data"]["code"].to_s
-				@@log.error(self.object_id,self.class.name,__method__,errstr)
-				puts(" " + errstr + "\r\n") if iDisp
 				errcode = sellOrderInfo["data"]["code"]
 				errcode = errcode.to_i
+				errstr = "失敗:" + errcode.to_s
+				@@log.error(self.object_id,self.class.name,__method__,errstr)
+				puts(dispstr + ' ' + errstr + "\r\n") if iDisp && errcode != 60001
 				if errcode > 60000 then
 					# @@log.debug(self.object_id,self.class.name,__method__,"GET_PRICEへ移動")
 					# @currentStatus.setCurrentStatus(StatusValues::GET_PRICE)
@@ -747,7 +747,7 @@ class OnePairBaiBai
 			end
 		rescue => exception
 			@@log.fatal(self.object_id,self.class.name,__method__,exception.to_s)
-			puts(" 失敗:" + exception.to_s + "\r\n") if iDisp
+			puts(dispstr + " 失敗:" + exception.to_s + "\r\n") if iDisp
 			return
 		end
 
@@ -765,7 +765,7 @@ class OnePairBaiBai
 		#正常終了したので、次の状態へ
 		@currentStatus.next()
 		dispmsg = "成功 数量:" + @targetSellAmount.to_s + " 金額:" + @targetSellPrice.to_s
-		puts(" " + dispmsg + "\r\n") if iDisp
+		puts(dispstr + " " + dispmsg + "\r\n") if iDisp
 		@@log.debug(self.object_id,self.class.name,__method__,dispmsg)
 	end
 
