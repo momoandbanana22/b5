@@ -1,4 +1,4 @@
-VERSION = "Version 1.5.5"
+VERSION = "Version 1.5.8"
 PROGRAMNAME = "BitBank BaiBai Bot (b5) "
 puts( PROGRAMNAME + VERSION )
 
@@ -6,9 +6,14 @@ require 'pp'
 require 'date'
 require 'io/console'
 require 'yaml'
-require 'slack/incoming/webhooks'
+SLACK_USE = true
+begin
+	require 'slack/incoming/webhooks'
+	require 'slack-ruby-bot'
+rescue LoadError
+	SLACK_USE = false
+end
 require 'logger'
-require 'slack-ruby-bot'
 
 require 'ruby_bitbankcc'
 
@@ -275,10 +280,12 @@ class OnePairBaiBai
 		@releaseMaxCount								= setting["releaseMaxCount"]
 		@releaseCount										= 0
 
-		slackSetting = YAML.load_file("slackSetting.yaml")
-		@@slackUse = slackSetting["slack"]["use"]
-		if @@slackUse then
-			@@slack = Slack::Incoming::Webhooks.new slackSetting["slack"]["webhookURL"]
+		if SLACK_USE
+			slackSetting = YAML.load_file("slackSetting.yaml")
+			@@slackUse = slackSetting["slack"]["use"]
+			if @@slackUse then
+				@@slack = Slack::Incoming::Webhooks.new slackSetting["slack"]["webhookURL"]
+			end
 		end
 	end
 
@@ -292,10 +299,12 @@ class OnePairBaiBai
 
 	# slack通知を送信する
 	def self.slackPost(iMsg)
-		if @@slackUse then
-			begin
-				@@slack.post iMsg
-			rescue Exception => e
+		if SLACK_USE
+			if @@slackUse then
+				begin
+					@@slack.post iMsg
+				rescue Exception => e
+				end
 			end
 		end
 	end
@@ -655,6 +664,9 @@ class OnePairBaiBai
 						@currentStatus.setCurrentStatus(StatusValues::GET_MYAMOUT)
 						@@log.debug(self.object_id,self.class.name,__method__,@targetPair.to_s + " " + tmp)
 						return
+					else
+						# 高掴み状態だが、このままリトライを続ける
+						return
 					end
 				else
 					# 高掴み手放し上限
@@ -806,14 +818,14 @@ class OnePairBaiBai
 		rescue => exception
 			@@log.fatal(self.object_id,self.class.name,__method__,exception.to_s)
 			dispStr = dispStr + " " + "失敗:" + exception.to_s + "\r\n" # puts(" 失敗:" + exception.to_s + "\r\n") if iDisp
-			puts(dispStr) if iDisp
+			# puts(dispStr) if iDisp
 			return
 		end
 
 		#正常終了したので、次の状態へ
 		@currentStatus.next()
 		dispStr = dispStr + " " + "成功 取り消しした。" + "\r\n" # puts(" 成功。約定した。" + "\r\n") if iDisp
-		puts(dispStr) if iDisp
+		# puts(dispStr) if iDisp
 		@@log.debug(self.object_id,self.class.name,__method__,"成功")
 		return
 	end
@@ -845,7 +857,9 @@ class OnePairBaiBai
 		@@log.info(self.object_id,self.class.name,__method__,dispStr)
 
 		# slack 通知
-		OnePairBaiBai.slackPost( dispStr )
+		if SLACK_USE
+			OnePairBaiBai.slackPost( dispStr )
+		end
 
 		#正常終了したので、次の状態へ
 		@currentStatus.next()
@@ -927,7 +941,9 @@ end
 
 # 設定ファイル読み込み
 setting = YAML.load_file("setting.yaml")
-slackSetting = YAML.load_file("slackSetting.yaml")
+if SLACK_USE
+	slackSetting = YAML.load_file("slackSetting.yaml")
+end
 
 # ログクラスを作成
 log = MyLog.new(setting["log"]["filepath"])
@@ -950,7 +966,9 @@ for pairName in targetbaibailist do
 end
 
 # プログラム名をslackに表示（起動通知）
-OnePairBaiBai.slackPost (PROGRAMNAME + VERSION)
+if SLACK_USE
+	OnePairBaiBai.slackPost (PROGRAMNAME + VERSION)
+end
 
 $end_request = false
 $baibaiDisp = true
@@ -959,7 +977,9 @@ $runningmode = true
 $readsetting = false
 $toBuyWait = false
 $toSellWait = false
-$showlooptop = true
+$showlooptop = false
+
+if SLACK_USE
 
 myBaiBaiThread = Thread.start {
 	while(true)
@@ -1111,5 +1131,21 @@ if slackSetting['slack']['use'] then
 else
 	loop do
 		sleep(1)
+	end
+end
+else
+	while(true)
+		puts("-----") if $showlooptop
+		for oneBaibai in baibais do
+			oneBaibai.doBaibai($baibaiDisp,$waitOrderDisp,$toBuyWait,$toSellWait) if $runningmode
+			break if $end_request
+		end
+		if $readsetting==true then
+			for oneBaibai in baibais do
+				oneBaibai.readSetting
+				break if $end_request
+			end
+			$readsetting = false
+		end
 	end
 end
