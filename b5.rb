@@ -1,4 +1,4 @@
-VERSION = "Version 1.5.8"
+VERSION = "Version 1.5.9"
 PROGRAMNAME = "BitBank BaiBai Bot (b5) "
 puts( PROGRAMNAME + VERSION )
 
@@ -117,12 +117,28 @@ class OnePairBaiBai
 		@@amountJPYtoPurchaseAtOneTime = newValue
 	end
 
-	@@amountBTCtoPurchaseAtOneTime = 0.01 # 1BTC=100万円として、一万円分
+	@@keepAmountJPY = 10000.0 # 一万円分
+	def self.keepAmountJPY
+		@@keepAmountJPY
+	  end
+	def self.keepAmountJPY=(newValue)
+		@@keepAmountJPY = newValue
+	end
+
+ 	@@amountBTCtoPurchaseAtOneTime = 0.01 # 1BTC=100万円として、一万円分
 	def self.amountBTCtoPurchaseAtOneTime
 		@@amountBTCtoPurchaseAtOneTime
 	  end
 	def self.amountBTCtoPurchaseAtOneTime=(newValue)
 		@@amountBTCtoPurchaseAtOneTime = newValue
+	end
+
+	@@keepAmountBTC = 0.01 # 1BTC=100万円として、一万円分
+	def self.keepAmountBTC
+		@@keepAmountBTC
+	  end
+	def self.keepAmountBTC=(newValue)
+		@@keepAmountBTC = newValue
 	end
 
 	# 販売する価格を、購入価格の何倍にするか？
@@ -272,7 +288,9 @@ class OnePairBaiBai
 	def readSetting
 		setting = YAML.load_file("setting.yaml")
 		@@amountJPYtoPurchaseAtOneTime	= setting["amountJPYtoPurchaseAtOneTime"].to_f
+		@@keepAmountJPY                 = setting["keepAmountJPY"].to_f
 		@@amountBTCtoPurchaseAtOneTime	= setting["amountBTCtoPurchaseAtOneTime"].to_f
+		@@keepAmountBTC                 = setting["keepAmountBTC"].to_f
 		@@magnification									= setting["magnification"].to_f
 		@buyOrderWaitMaxRetry						= setting["buyOrderWaitMaxRetry"].to_i
 		@sellOrderWaitMaxRetry					= setting["sellOrderWaitMaxRetry"].to_i
@@ -510,12 +528,19 @@ class OnePairBaiBai
 		when "btc_jpy","xrp_jpy","mona_jpy","bcc_jpy"
 			freeamount = @amount['jpy']['free_amount'].to_f
 			tukau = @@amountJPYtoPurchaseAtOneTime.to_f
+			nokosu = @@keepAmountJPY
 		when "ltc_btc","eth_btc","mona_btc","bcc_btc"
 			freeamount = @amount['btc']['free_amount'].to_f
 			tukau = @@amountBTCtoPurchaseAtOneTime.to_f
+			nokosu = @@keepAmountBTC
 		else
 			freeamount = 0.0 # 買わない
 			tukau = 0.0 # 買わない
+			nokosu = 0
+		end
+		if nokosu > freeamount
+			@currentStatus.setCurrentStatus(StatusValues::GET_MYAMOUT)
+			return
 		end
 		# 使用予定金額が手持金を超えていたら、手持ち金を使用予定金額を使う。
 		#if tukau>freeamount then

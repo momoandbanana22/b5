@@ -1,28 +1,29 @@
-amountJPYtoPurchaseAtOneTime: 1000.0
+amountJPYtoPurchaseAtOneTime: 5000.0
 # ↑xxx_jpyペアでxxxをJPYで買う時、一度に購入する最大金額(JPY)
+keepAmountJPY: 10000
 
-amountBTCtoPurchaseAtOneTime: 0.01
+amountBTCtoPurchaseAtOneTime: 0.005
 # ↑xxx_btcペアでxxxをJPYで買う時、一度に購入する最大金額(BTC)
+keepAmoutBTC: 0
 
-magnification: 1.0012
+magnification: 1.00023
 # ↑販売する価格を、購入価格の何倍にするか？
 
 buyOrderWaitMaxRetry: 1
 # ↑最大購入待ち回数
 
-sellOrderWaitMaxRetry: 3
+sellOrderWaitMaxRetry: 1
 # ↑最大販売待ち回数
 
-targetBaiBailist: ["btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy","btc_jpy"]
-# targetBaiBailist: ["btc_jpy"]
+# targetBaiBailist: ["ltc_btc","eth_btc","mona_jpy","mona_btc","bcc_btc","bcc_jpy","bcc_jpy","bcc_jpy","bcc_jpy","btc_jpy","bcc_jpy","bcc_jpy","bcc_jpy","bcc_jpy","bcc_jpy","bcc_jpy","bcc_jpy","bcc_jpy","bcc_jpy","btc_jpy"]
+targetBaiBailist: ["btc_jpy"]
 # ↑売買を行う通貨ペアを指定する
 
 # 購入価格*higiGrab>市場価格となったら、高掴みと判断する
-highGrab: 0.995
+highGrab: 0.9
 
 # 高掴みになったものを手放して、売買をやり直す回数。（つまり、資金は、１エージェントあたり、amountJPYtoPurchaseAtOneTime*(releaseMaxCount+1)必要となる。
-releaseMaxCount: 100
-# ↑
+releaseMaxCount: 5
 
 # ↓logに関する設定
 log:
