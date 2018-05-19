@@ -6,7 +6,7 @@ amountBTCtoPurchaseAtOneTime: 0.005
 # ↑xxx_btcペアでxxxをJPYで買う時、一度に購入する最大金額(BTC)
 keepAmoutBTC: 0
 
-magnification: 1.00023
+magnification: 1.0005
 # ↑販売する価格を、購入価格の何倍にするか？
 
 buyOrderWaitMaxRetry: 1

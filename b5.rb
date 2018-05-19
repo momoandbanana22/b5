@@ -1,4 +1,4 @@
-VERSION = "Version 1.5.9"
+VERSION = "Version 1.6.0"
 PROGRAMNAME = "BitBank BaiBai Bot (b5) "
 puts( PROGRAMNAME + VERSION )
 
@@ -66,31 +66,52 @@ class Trend
 		@delta = 0
 		@old_price = 0
 	end
+#	def add_price_info(iCoinPriceInfo)
+#		new_price = iCoinPriceInfo['last'].to_f
+#		if @old_price == new_price then
+#			@delta = 0
+#			return @delta
+#		end
+#		@price_history.push ( iCoinPriceInfo )
+#		@old_price = new_price
+#		if @price_history.size == 1 then
+#			@delta = 0
+#		elsif @price_history.size == 2 then
+#			@delta = 0
+#		else
+#			# @price_history.size==3
+#			d1 = @price_history[1]['last'].to_f - @price_history[0]['last'].to_f
+#			d2 = @price_history[2]['last'].to_f - @price_history[1]['last'].to_f
+#			if d2<=0 then
+#				@delta = 0
+#			elsif d1>0 and d2>0 then
+#				@delta = d1 + d2
+#			elsif d1<0 and d2>0 then
+#				@delta = d1 + d2
+#			end
+#			@price_history.shift # del [0]
+#		end
+#		return @delta
+#	end
 	def add_price_info(iCoinPriceInfo)
 		new_price = iCoinPriceInfo['last'].to_f
-		if @old_price == new_price then
+		@price_history.push ( iCoinPriceInfo )
+		if @price_history.size < 10 then
 			@delta = 0
 			return @delta
 		end
-		@price_history.push ( iCoinPriceInfo )
-		@old_price = new_price
-		if @price_history.size == 1 then
-			@delta = 0
-		elsif @price_history.size == 2 then
-			@delta = 0
-		else
-			# @price_history.size==3
-			d1 = @price_history[1]['last'].to_f - @price_history[0]['last'].to_f
-			d2 = @price_history[2]['last'].to_f - @price_history[1]['last'].to_f
-			if d2<=0 then
-				@delta = 0
-			elsif d1>0 and d2>0 then
-				@delta = d1 + d2
-			elsif d1<0 and d2>0 then
-				@delta = d1 + d2
-			end
-			@price_history.shift # del [0]
+		# @price_history.size >= 10
+		average = 0
+		@price_history.each do |onePriceInfo|
+			average += onePriceInfo['last'].to_f
 		end
+		average /= @price_history.size
+		if average < new_price
+			@delta = new_price - average
+		else
+			@delta = 0
+		end
+		@price_history.shift # del [0]
 		return @delta
 	end
 	def get_trend
