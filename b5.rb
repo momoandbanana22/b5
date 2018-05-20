@@ -1,4 +1,4 @@
-VERSION = "Version 1.6.0"
+VERSION = "Version 1.6.1"
 PROGRAMNAME = "BitBank BaiBai Bot (b5) "
 puts( PROGRAMNAME + VERSION )
 
@@ -60,11 +60,13 @@ class Bitbankcc
 end
 
 class Trend
-	def initialize(iPair)
+	attr_accessor :average_count
+	def initialize(iPair, iAverageCount)
 		@pair = iPair
 		@price_history = []
 		@delta = 0
 		@old_price = 0
+		@average_count = iAverageCount
 	end
 #	def add_price_info(iCoinPriceInfo)
 #		new_price = iCoinPriceInfo['last'].to_f
@@ -96,11 +98,11 @@ class Trend
 	def add_price_info(iCoinPriceInfo)
 		new_price = iCoinPriceInfo['last'].to_f
 		@price_history.push ( iCoinPriceInfo )
-		if @price_history.size < 10 then
+		if @price_history.size < @average_count then
 			@delta = 0
 			return @delta
 		end
-		# @price_history.size >= 10
+		# @price_history.size >= @average_count
 		average = 0
 		@price_history.each do |onePriceInfo|
 			average += onePriceInfo['last'].to_f
@@ -301,7 +303,7 @@ class OnePairBaiBai
 
 		# このコインペアでのインスタンス生成がはじめてなら、トレンドインスタンスを作成する
 		if not @@trend[@targetPair] then
-			@@trend[@targetPair] = Trend.new(@targetPair)
+			@@trend[@targetPair] = Trend.new(@targetPair, @average_count)
 		end
 	end
 
@@ -318,6 +320,10 @@ class OnePairBaiBai
 		@highGrab												= setting["highGrab"]
 		@releaseMaxCount								= setting["releaseMaxCount"]
 		@releaseCount										= 0
+		@average_count									= setting["average_count"]
+		@@trend.each do |k,v|
+			v.average_count = @average_count
+		end
 
 		if SLACK_USE
 			slackSetting = YAML.load_file("slackSetting.yaml")
