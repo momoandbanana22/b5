@@ -1,4 +1,4 @@
-VERSION = "Version 1.6.2"
+VERSION = "Version 1.6.3"
 PROGRAMNAME = "BitBank BaiBai Bot (b5) "
 puts( PROGRAMNAME + VERSION )
 
@@ -74,10 +74,10 @@ class Trend
 		@old_price = last_price
 		return delta if @price_history.size < 3
 		# [@price_history.size>=3]
-		d1 = @price_history[1]['last'].to_f - @price_history[0]['last'].to_f
-		d2 = @price_history[2]['last'].to_f - @price_history[1]['last'].to_f
+		d1 = @price_history[-2]['last'].to_f - @price_history[-3]['last'].to_f
+		d2 = @price_history[-1]['last'].to_f - @price_history[-2]['last'].to_f
 		if d2<=0 then
-			delta = 0
+			delta = d2
 		elsif d1>0 and d2>0 then
 			delta = d1 + d2
 		elsif d1<0 and d2>0 then
