@@ -1,4 +1,4 @@
-VERSION = "Version 1.6.1"
+VERSION = "Version 1.6.2"
 PROGRAMNAME = "BitBank BaiBai Bot (b5) "
 puts( PROGRAMNAME + VERSION )
 
@@ -68,52 +68,61 @@ class Trend
 		@old_price = 0
 		@average_count = iAverageCount
 	end
-#	def add_price_info(iCoinPriceInfo)
-#		new_price = iCoinPriceInfo['last'].to_f
-#		if @old_price == new_price then
-#			@delta = 0
-#			return @delta
-#		end
-#		@price_history.push ( iCoinPriceInfo )
-#		@old_price = new_price
-#		if @price_history.size == 1 then
-#			@delta = 0
-#		elsif @price_history.size == 2 then
-#			@delta = 0
-#		else
-#			# @price_history.size==3
-#			d1 = @price_history[1]['last'].to_f - @price_history[0]['last'].to_f
-#			d2 = @price_history[2]['last'].to_f - @price_history[1]['last'].to_f
-#			if d2<=0 then
-#				@delta = 0
-#			elsif d1>0 and d2>0 then
-#				@delta = d1 + d2
-#			elsif d1<0 and d2>0 then
-#				@delta = d1 + d2
-#			end
-#			@price_history.shift # del [0]
-#		end
-#		return @delta
-#	end
-	def add_price_info(iCoinPriceInfo)
-		new_price = iCoinPriceInfo['last'].to_f
-		@price_history.push ( iCoinPriceInfo )
-		if @price_history.size < @average_count then
-			@delta = 0
-			return @delta
+	def check_delta1(last_price)
+		delta = 0
+		return delta if @old_price == last_price
+		@old_price = last_price
+		return delta if @price_history.size < 3
+		# [@price_history.size>=3]
+		d1 = @price_history[1]['last'].to_f - @price_history[0]['last'].to_f
+		d2 = @price_history[2]['last'].to_f - @price_history[1]['last'].to_f
+		if d2<=0 then
+			delta = 0
+		elsif d1>0 and d2>0 then
+			delta = d1 + d2
+		elsif d1<0 and d2>0 then
+			delta = d1 + d2
 		end
-		# @price_history.size >= @average_count
+		return delta
+	end
+	def check_delta2(last_price)
+		delta = 0
+		return delta if @price_history.size < @average_count
 		average = 0
 		@price_history.each do |onePriceInfo|
 			average += onePriceInfo['last'].to_f
 		end
 		average /= @price_history.size
-		if average < new_price
-			@delta = new_price - average
+		if average < last_price
+			delta = last_price - average
 		else
-			@delta = 0
+			delta = 0
 		end
-		@price_history.shift # del [0]
+		return delta
+	end
+	def add_price_info(iCoinPriceInfo)
+		last_price = iCoinPriceInfo['last'].to_f
+		@price_history.push ( iCoinPriceInfo )
+		while @price_history.size > @average_count
+			@price_history.shift # del [0]
+		end
+
+		delta1 = check_delta1(last_price)
+		delta2 = check_delta2(last_price)
+
+		if (delta1 > 0 && delta2 > 0)
+			# up & up -> up
+			@delta = delta1 + delta2
+		elsif (delta1 > 0 && delta2 <= 0)
+			# up & down -> stop
+			delta = 0
+		elsif (delta1 <= 0 && delta2 > 0)
+			# down & up -> stop
+			delta = 0
+		else
+			# down & down -> down
+			@delta = delta1 + delta2
+		end
 		return @delta
 	end
 	def get_trend
@@ -464,7 +473,7 @@ class OnePairBaiBai
 		# puts(" 成功" + "\r\n") if iDisp
 	end
 
-	def rawGetPrive(iDisp)
+	def rawGetPrice(iDisp)
 		# たとえばamout['jpy']['free_amount']ってやれば、JPYの（使用可能)残高がわかる、二次元ハッシュを用意
 		@coinPrice = {} #Hash.new { |h,k| h[k] = {} }
 		# print( DateTime.now ) if iDisp # 現在日時表示
@@ -511,7 +520,7 @@ class OnePairBaiBai
 	# 現在の価格を取得
 	###################
 	def getPrice(iDisp)
-		if rawGetPrive(iDisp) then
+		if rawGetPrice(iDisp) then
 			@currentStatus.next()
 			calcBuyPrice(iDisp)
 		end
@@ -739,7 +748,7 @@ class OnePairBaiBai
 	# 販売価格を計算して決定する
 	#############################
 	def calcSellPrice(iDisp)
-		rawGetPrive(false)
+		rawGetPrice(false)
 		# print( DateTime.now ) if iDisp # 現在日時表示
 		# print(" " + self.object_id.to_s) # オブジェクトIDを表示
 		# print(" " + @targetPair) if iDisp # ペア名表示
