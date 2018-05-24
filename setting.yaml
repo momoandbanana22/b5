@@ -1,12 +1,12 @@
 amountJPYtoPurchaseAtOneTime: 5000.0
 # ↑xxx_jpyペアでxxxをJPYで買う時、一度に購入する最大金額(JPY)
-keepAmountJPY: 15000
+keepAmountJPY: 0
 
-amountBTCtoPurchaseAtOneTime: 0.005
+amountBTCtoPurchaseAtOneTime: 0.001
 # ↑xxx_btcペアでxxxをJPYで買う時、一度に購入する最大金額(BTC)
 keepAmoutBTC: 0
 
-magnification: 1.00023
+magnification: 1.0001
 # ↑販売する価格を、購入価格の何倍にするか？
 
 buyOrderWaitMaxRetry: 1
@@ -31,4 +31,4 @@ log:
   filepath: "b5.log"
 
 # 現在価格の直近n回平均を、現在価格が超えた時に上昇トレンドとする、そのn回の設定
-average_count: 50
+average_count: 900

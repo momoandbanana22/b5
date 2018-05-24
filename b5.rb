@@ -1,4 +1,4 @@
-VERSION = "Version 1.6.3"
+VERSION = "Version 1.6.4"
 PROGRAMNAME = "BitBank BaiBai Bot (b5) "
 puts( PROGRAMNAME + VERSION )
 
@@ -87,7 +87,10 @@ class Trend
 	end
 	def check_delta2(last_price)
 		delta = 0
-		return delta if @price_history.size < @average_count
+		if @price_history.size < @average_count
+				puts("trend count=#{@price_history.size}")
+				return delta
+		end
 		average = 0
 		@price_history.each do |onePriceInfo|
 			average += onePriceInfo['last'].to_f
@@ -107,8 +110,8 @@ class Trend
 			@price_history.shift # del [0]
 		end
 
-		delta1 = check_delta1(last_price)
-		delta2 = check_delta2(last_price)
+		delta1 = check_delta1(last_price) # 3 ponts up&down trend
+		delta2 = check_delta2(last_price) # X point average trend
 
 		if (delta1 > 0 && delta2 > 0)
 			# up & up -> up
@@ -507,7 +510,12 @@ class OnePairBaiBai
 		# 現在の価格情報を傾向管理クラスに渡す
 		if @@trend[@targetPair].add_price_info(@coinPrice)<=0 then
 			# 価格が降下しているので、購入しない＝価格取得をやり直す
-			# puts(" 価格降下中" + "\r\n") if iDisp
+			# print( DateTime.now )# 現在日時表示
+			# print(" " + self.object_id.to_s)# オブジェクトIDを表示
+			# print(" " + @targetPair) # ペア名表示
+			# print(" " + "価格情報取得") if iDisp
+			# puts(" 価格降下中" + "\r\n")
+			
 			return false
 		end
 
@@ -768,6 +776,17 @@ class OnePairBaiBai
 			@targetSellPrice = market_price
 		end
 		# print(" " + @targetSellPrice.to_s) if iDisp
+
+		# 上昇中なのでまだ売らない（上昇から下降に転じたら売る）
+		if @@trend[@targetPair].get_trend >= 0 && @targetBuyPrice > market_price
+			# 価格が上昇しているので、売らない＝価格取得をやりなおす
+			# print( DateTime.now )# 現在日時表示
+			# print(" " + self.object_id.to_s)# オブジェクトIDを表示
+			# print(" " + @targetPair) # ペア名表示
+			# print(" " + "販売価格計算") if iDisp
+			# puts(" 価格上昇中" + "\r\n")
+			return
+		end
 
 		#正常終了したので、次の状態へ
 		@currentStatus.next()
