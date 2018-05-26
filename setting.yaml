@@ -30,5 +30,5 @@ log:
   enable: true
   filepath: "b5.log"
 
-# 現在価格の直近n回平均を、現在価格が超えた時に上昇トレンドとする、そのn回の設定
-average_count: 900
+# 現在価格の直近n秒間平均を、現在価格が超えた時に上昇トレンドとする、そのn秒の設定
+average_count: 600

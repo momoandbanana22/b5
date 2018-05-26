@@ -1,4 +1,4 @@
-VERSION = "Version 1.6.4"
+VERSION = "Version 1.6.5"
 PROGRAMNAME = "BitBank BaiBai Bot (b5) "
 puts( PROGRAMNAME + VERSION )
 
@@ -88,7 +88,7 @@ class Trend
 	def check_delta2(last_price)
 		delta = 0
 		if @price_history.size < @average_count
-				puts("trend count=#{@price_history.size}")
+				puts("trend count=#{@price_history.size}/#{@average_count} #{@pair}")
 				return delta
 		end
 		average = 0
@@ -106,7 +106,7 @@ class Trend
 	def add_price_info(iCoinPriceInfo)
 		last_price = iCoinPriceInfo['last'].to_f
 		@price_history.push ( iCoinPriceInfo )
-		while @price_history.size > @average_count
+		while @price_history.size > (@average_count + 1)
 			@price_history.shift # del [0]
 		end
 
@@ -137,6 +137,12 @@ class Trend
 end
 
 class OnePairBaiBai
+	# インスタンス数
+	@@instance_count = 0
+	
+	# コインペア別インスタンス数
+	@@instance_count_bypair = {}
+
 	# BitBank.cc で取り扱っているコインペアの一覧
 	BBCC_COIN_PAIR_NAMES = ["btc_jpy", "xrp_jpy", "ltc_btc", "eth_btc", "mona_jpy", "mona_btc", "bcc_jpy", "bcc_btc"]
 
@@ -274,8 +280,18 @@ class OnePairBaiBai
 			raise ArgumentError("No CoinPair")
 		end
 
+		# 全インスタンス数をカウント
+		@@instance_count += 1
+
 		# 引数で指定されたコインペアをクラス変数に保存
 		@targetPair = iTargetPair
+
+		# コインペア別インスタンスうをカウント
+		if not @@instance_count_bypair[@targetPair]
+			@@instance_count_bypair[@targetPair] = 1
+		else
+			@@instance_count_bypair[@targetPair] += 1
+		end
 
 		# 引数で指定されたBitbankccクラスを記憶
 		@bbcc = iBbcc
@@ -310,13 +326,14 @@ class OnePairBaiBai
 		# ログクラスを保存
 		@@log = iLog
 
-		# 設定ファイル読み込み
-		readSetting()
-
 		# このコインペアでのインスタンス生成がはじめてなら、トレンドインスタンスを作成する
 		if not @@trend[@targetPair] then
 			@@trend[@targetPair] = Trend.new(@targetPair, @average_count)
 		end
+
+		# 設定ファイル読み込み
+		readSetting()
+
 	end
 
 	# 設定ファイル読み込み
@@ -334,7 +351,8 @@ class OnePairBaiBai
 		@releaseCount										= 0
 		@average_count									= setting["average_count"]
 		@@trend.each do |k,v|
-			v.average_count = @average_count
+			@average_count_bypair = @average_count.to_f / 1.94 * @@instance_count_bypair[k].to_f / @@instance_count
+			v.average_count = @average_count_bypair
 		end
 
 		if SLACK_USE
